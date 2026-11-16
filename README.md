@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # PizzeriaBellaItalia (WinForms + SQL Server LocalDB)
 
 Aplicación de escritorio en C# (Windows Forms, .NET 10) para la gestión de pedidos de la pizzería "Bella Italia", con persistencia en **SQL Server LocalDB** mediante **ADO.NET** (`Microsoft.Data.SqlClient`) y arquitectura en capas.
@@ -59,3 +60,7 @@ Campos principales: `IdPedido` (IDENTITY, PK), datos de cliente (`Cliente`, `Tel
 - `System.Data.SqlClient` puede aparecer comentado en el `.csproj`; el acceso a datos utiliza `Microsoft.Data.SqlClient`.
 - `BDpizzeria`: los scripts `.sql` y `.bat` usan rutas absolutas a esta carpeta; son correctos para la ruta del proyecto, pero deben actualizarse si se mueve la solución.
 - Ver `flujo.txt` para el detalle paso a paso de cada acción.
+=======
+# pizzeriaBellaItalia-BD-DAO
+C# CRUD COMPLETO CON PERISTENCIA SQK SRV LOCAL
+>>>>>>> 68c867e2dff7508d447532ac3c2277dfb8abe6e2
