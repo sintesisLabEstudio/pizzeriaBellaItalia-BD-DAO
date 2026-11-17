@@ -20,7 +20,7 @@
 
 SET NOCOUNT ON;
 
-DECLARE @DataDir NVARCHAR(400) = N'C:\desarrollo\Csoft\App_WinForms_Pizzeria_Bella_Italia_BD\Codigo_Funcional\BDpizzeria';
+DECLARE @DataDir NVARCHAR(400) = N'C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v2\Codigo_Funcional\BDpizzeria';
 DECLARE @Mdf     NVARCHAR(500) = @DataDir + N'\pizzeriaDB.mdf';
 DECLARE @Ldf     NVARCHAR(500) = @DataDir + N'\pizzeriaDB.ldf';
 
@@ -118,6 +118,8 @@ IF DB_ID(N'PizzeriaDB') IS NOT NULL
         WHERE object_id = OBJECT_ID(N''dbo.Pedidos'');
 
         SELECT COUNT(*) AS PedidosGuardados FROM dbo.Pedidos;
+
+        SELECT COUNT(*) AS ClientesRegistrados FROM dbo.Clientes;
     ');
 ELSE
     PRINT 'La base PizzeriaDB no esta disponible.';

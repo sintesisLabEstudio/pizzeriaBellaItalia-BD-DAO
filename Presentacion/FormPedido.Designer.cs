@@ -1,27 +1,11 @@
-﻿namespace PizzeriaBellaItalia.Presentacion; // Namespace de la capa de presentación.
+namespace PizzeriaBellaItalia.Presentacion; // Namespace de la capa de presentación.
 
-/// <summary>
-/// Definición parcial del formulario generada/mantenida por el Diseñador de Windows Forms.
-/// Contiene la declaración de controles, su inicialización, propiedades visuales y
-/// la suscripción de eventos a los manejadores definidos en FormPedido.cs.
-/// </summary>
 partial class FormPedido : Form
 {
-    /// <summary>
-    /// Contenedor de componentes para administrar recursos no administrados asociados a controles/componentes.
-    /// El diseñador lo utiliza para liberarlos correctamente en Dispose.
-    /// </summary>
     private System.ComponentModel.IContainer components = null;
 
-    /// <summary>
-    /// Libera los recursos usados por el formulario.
-    /// </summary>
-    /// <param name="disposing">
-    /// true para liberar recursos administrados y no administrados; false solo no administrados.
-    /// </param>
     protected override void Dispose(bool disposing)
     {
-        // Si se está liberando explícitamente, se liberan los componentes hijos si existen.
         if (disposing && (components != null))
         {
             components.Dispose();
@@ -41,6 +25,7 @@ partial class FormPedido : Form
         DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
         DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
         grpCliente = new GroupBox();
+        btnEditaClientes = new Button();
         btnBuscarPedidoPorId = new Button();
         txtIdPedido = new TextBox();
         lblIdPedido = new Label();
@@ -95,6 +80,7 @@ partial class FormPedido : Form
         // grpCliente
         // 
         grpCliente.BackColor = Color.FromArgb(45, 45, 48);
+        grpCliente.Controls.Add(btnEditaClientes);
         grpCliente.Controls.Add(btnBuscarPedidoPorId);
         grpCliente.Controls.Add(txtIdPedido);
         grpCliente.Controls.Add(lblIdPedido);
@@ -108,10 +94,25 @@ partial class FormPedido : Form
         grpCliente.Margin = new Padding(3, 2, 3, 2);
         grpCliente.Name = "grpCliente";
         grpCliente.Padding = new Padding(3, 2, 3, 2);
-        grpCliente.Size = new Size(321, 139);
+        grpCliente.Size = new Size(321, 158);
         grpCliente.TabIndex = 0;
         grpCliente.TabStop = false;
         grpCliente.Text = "Datos del Cliente";
+        // 
+        // btnEditaClientes
+        // 
+        btnEditaClientes.BackColor = Color.FromArgb(63, 63, 70);
+        btnEditaClientes.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70);
+        btnEditaClientes.FlatStyle = FlatStyle.Flat;
+        btnEditaClientes.ForeColor = Color.GhostWhite;
+        btnEditaClientes.Location = new Point(13, 123);
+        btnEditaClientes.Margin = new Padding(3, 2, 3, 2);
+        btnEditaClientes.Name = "btnEditaClientes";
+        btnEditaClientes.Size = new Size(292, 23);
+        btnEditaClientes.TabIndex = 8;
+        btnEditaClientes.Text = "Edición Clientes";
+        btnEditaClientes.UseVisualStyleBackColor = false;
+        btnEditaClientes.Click += btnEditaClientes_Click;
         // 
         // btnBuscarPedidoPorId
         // 
@@ -215,7 +216,7 @@ partial class FormPedido : Form
         btnTodosLosPedidos.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70);
         btnTodosLosPedidos.FlatStyle = FlatStyle.Flat;
         btnTodosLosPedidos.ForeColor = Color.LightSteelBlue;
-        btnTodosLosPedidos.Location = new Point(490, 310);
+        btnTodosLosPedidos.Location = new Point(490, 400);
         btnTodosLosPedidos.Margin = new Padding(3, 2, 3, 2);
         btnTodosLosPedidos.Name = "btnTodosLosPedidos";
         btnTodosLosPedidos.Size = new Size(180, 23);
@@ -232,11 +233,11 @@ partial class FormPedido : Form
         grpPizza.Controls.Add(cboTamano);
         grpPizza.Controls.Add(lblTamano);
         grpPizza.ForeColor = Color.FromArgb(230, 230, 230);
-        grpPizza.Location = new Point(339, 47);
+        grpPizza.Location = new Point(339, 54);
         grpPizza.Margin = new Padding(3, 2, 3, 2);
         grpPizza.Name = "grpPizza";
         grpPizza.Padding = new Padding(3, 2, 3, 2);
-        grpPizza.Size = new Size(345, 94);
+        grpPizza.Size = new Size(345, 106);
         grpPizza.TabIndex = 1;
         grpPizza.TabStop = false;
         grpPizza.Text = "Tamaño y Masa:";
@@ -252,6 +253,7 @@ partial class FormPedido : Form
         cboMasa.Name = "cboMasa";
         cboMasa.Size = new Size(250, 23);
         cboMasa.TabIndex = 4;
+        cboMasa.SelectedIndexChanged += Calculo_Changed;
         // 
         // lblMasa
         // 
@@ -275,6 +277,7 @@ partial class FormPedido : Form
         cboTamano.Name = "cboTamano";
         cboTamano.Size = new Size(250, 23);
         cboTamano.TabIndex = 2;
+        cboTamano.SelectedIndexChanged += Calculo_Changed;
         // 
         // lblTamano
         // 
@@ -296,7 +299,7 @@ partial class FormPedido : Form
         grpIngredientes.Controls.Add(chkChampinones);
         grpIngredientes.Controls.Add(chkQuesoExtra);
         grpIngredientes.ForeColor = Color.FromArgb(230, 230, 230);
-        grpIngredientes.Location = new Point(526, 153);
+        grpIngredientes.Location = new Point(430, 175);
         grpIngredientes.Margin = new Padding(3, 2, 3, 2);
         grpIngredientes.Name = "grpIngredientes";
         grpIngredientes.Padding = new Padding(3, 2, 3, 2);
@@ -317,6 +320,7 @@ partial class FormPedido : Form
         chkTocino.TabIndex = 5;
         chkTocino.Text = "Tocino";
         chkTocino.UseVisualStyleBackColor = true;
+        chkTocino.CheckedChanged += Calculo_Changed;
         // 
         // chkPepperoni
         // 
@@ -330,6 +334,7 @@ partial class FormPedido : Form
         chkPepperoni.TabIndex = 4;
         chkPepperoni.Text = "Pepperoni";
         chkPepperoni.UseVisualStyleBackColor = true;
+        chkPepperoni.CheckedChanged += Calculo_Changed;
         // 
         // chkAceitunas
         // 
@@ -343,6 +348,7 @@ partial class FormPedido : Form
         chkAceitunas.TabIndex = 2;
         chkAceitunas.Text = "Aceitunas";
         chkAceitunas.UseVisualStyleBackColor = true;
+        chkAceitunas.CheckedChanged += Calculo_Changed;
         // 
         // chkChampinones
         // 
@@ -356,6 +362,7 @@ partial class FormPedido : Form
         chkChampinones.TabIndex = 1;
         chkChampinones.Text = "Champiñones";
         chkChampinones.UseVisualStyleBackColor = true;
+        chkChampinones.CheckedChanged += Calculo_Changed;
         // 
         // chkQuesoExtra
         // 
@@ -369,6 +376,7 @@ partial class FormPedido : Form
         chkQuesoExtra.TabIndex = 0;
         chkQuesoExtra.Text = "Queso Extra";
         chkQuesoExtra.UseVisualStyleBackColor = true;
+        chkQuesoExtra.CheckedChanged += Calculo_Changed;
         // 
         // grpEntrega
         // 
@@ -377,11 +385,11 @@ partial class FormPedido : Form
         grpEntrega.Controls.Add(rdbDelivery);
         grpEntrega.Controls.Add(rdbRetiro);
         grpEntrega.ForeColor = Color.FromArgb(230, 230, 230);
-        grpEntrega.Location = new Point(13, 152);
+        grpEntrega.Location = new Point(12, 164);
         grpEntrega.Margin = new Padding(3, 2, 3, 2);
         grpEntrega.Name = "grpEntrega";
         grpEntrega.Padding = new Padding(3, 2, 3, 2);
-        grpEntrega.Size = new Size(282, 82);
+        grpEntrega.Size = new Size(321, 80);
         grpEntrega.TabIndex = 4;
         grpEntrega.TabStop = false;
         grpEntrega.Text = "Servicio y Descuento";
@@ -398,6 +406,7 @@ partial class FormPedido : Form
         chkConvenioEstudiante.TabIndex = 2;
         chkConvenioEstudiante.Text = "Convenio Estudiante/IPVG (10% Dcto)";
         chkConvenioEstudiante.UseVisualStyleBackColor = true;
+        chkConvenioEstudiante.CheckedChanged += Calculo_Changed;
         // 
         // rdbDelivery
         // 
@@ -411,6 +420,7 @@ partial class FormPedido : Form
         rdbDelivery.TabIndex = 1;
         rdbDelivery.Text = "Delivery ($2.000.-)";
         rdbDelivery.UseVisualStyleBackColor = true;
+        rdbDelivery.CheckedChanged += Calculo_Changed;
         // 
         // rdbRetiro
         // 
@@ -426,6 +436,7 @@ partial class FormPedido : Form
         rdbRetiro.TabStop = true;
         rdbRetiro.Text = "Retiro en Local";
         rdbRetiro.UseVisualStyleBackColor = true;
+        rdbRetiro.CheckedChanged += Calculo_Changed;
         // 
         // lblSubtotalValor
         // 
@@ -491,17 +502,16 @@ partial class FormPedido : Form
         grpResumen.Controls.Add(lblTotalNombre);
         grpResumen.Controls.Add(lblSubtotalNombre);
         grpResumen.Controls.Add(lblSubtotalValor);
-        grpResumen.Controls.Add(grpEntrega);
         grpResumen.Controls.Add(lblDescuentoValor);
         grpResumen.Controls.Add(lblIvaValor);
         grpResumen.Controls.Add(lblDeliveryValor);
         grpResumen.Controls.Add(lblTotalValor);
         grpResumen.ForeColor = Color.FromArgb(230, 230, 230);
-        grpResumen.Location = new Point(12, 153);
+        grpResumen.Location = new Point(12, 248);
         grpResumen.Margin = new Padding(3, 2, 3, 2);
         grpResumen.Name = "grpResumen";
         grpResumen.Padding = new Padding(3, 2, 3, 2);
-        grpResumen.Size = new Size(321, 152);
+        grpResumen.Size = new Size(321, 145);
         grpResumen.TabIndex = 10;
         grpResumen.TabStop = false;
         grpResumen.Text = "Detalle de Pago";
@@ -567,7 +577,7 @@ partial class FormPedido : Form
         btnCalcular.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70);
         btnCalcular.FlatStyle = FlatStyle.Flat;
         btnCalcular.ForeColor = Color.LimeGreen;
-        btnCalcular.Location = new Point(339, 198);
+        btnCalcular.Location = new Point(420, 324);
         btnCalcular.Margin = new Padding(3, 2, 3, 2);
         btnCalcular.Name = "btnCalcular";
         btnCalcular.Size = new Size(177, 48);
@@ -582,7 +592,7 @@ partial class FormPedido : Form
         btnLimpiar.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70);
         btnLimpiar.FlatStyle = FlatStyle.Flat;
         btnLimpiar.ForeColor = Color.White;
-        btnLimpiar.Location = new Point(12, 312);
+        btnLimpiar.Location = new Point(12, 402);
         btnLimpiar.Margin = new Padding(3, 2, 3, 2);
         btnLimpiar.Name = "btnLimpiar";
         btnLimpiar.Size = new Size(144, 22);
@@ -597,7 +607,7 @@ partial class FormPedido : Form
         btnActualizarPedido.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70);
         btnActualizarPedido.FlatStyle = FlatStyle.Flat;
         btnActualizarPedido.ForeColor = Color.SkyBlue;
-        btnActualizarPedido.Location = new Point(163, 310);
+        btnActualizarPedido.Location = new Point(163, 400);
         btnActualizarPedido.Margin = new Padding(3, 2, 3, 2);
         btnActualizarPedido.Name = "btnActualizarPedido";
         btnActualizarPedido.Size = new Size(144, 26);
@@ -612,7 +622,7 @@ partial class FormPedido : Form
         btnEliminarPedido.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70);
         btnEliminarPedido.FlatStyle = FlatStyle.Flat;
         btnEliminarPedido.ForeColor = Color.Orange;
-        btnEliminarPedido.Location = new Point(324, 310);
+        btnEliminarPedido.Location = new Point(324, 400);
         btnEliminarPedido.Margin = new Padding(3, 2, 3, 2);
         btnEliminarPedido.Name = "btnEliminarPedido";
         btnEliminarPedido.Size = new Size(144, 24);
@@ -676,13 +686,13 @@ partial class FormPedido : Form
         dgvPedidos.DefaultCellStyle = dataGridViewCellStyle2;
         dgvPedidos.EnableHeadersVisualStyles = false;
         dgvPedidos.GridColor = Color.FromArgb(70, 70, 70);
-        dgvPedidos.Location = new Point(12, 343);
+        dgvPedidos.Location = new Point(12, 433);
         dgvPedidos.MultiSelect = false;
         dgvPedidos.Name = "dgvPedidos";
         dgvPedidos.ReadOnly = true;
         dgvPedidos.RowHeadersVisible = false;
         dgvPedidos.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        dgvPedidos.Size = new Size(672, 290);
+        dgvPedidos.Size = new Size(672, 236);
         dgvPedidos.TabIndex = 16;
         dgvPedidos.CellClick += dgvPedidos_CellClick;
         // 
@@ -691,7 +701,7 @@ partial class FormPedido : Form
         lblAyuda.BackColor = Color.FromArgb(45, 45, 48);
         lblAyuda.BorderStyle = BorderStyle.FixedSingle;
         lblAyuda.ForeColor = Color.FromArgb(230, 230, 230);
-        lblAyuda.Location = new Point(12, 643);
+        lblAyuda.Location = new Point(12, 672);
         lblAyuda.Name = "lblAyuda";
         lblAyuda.Padding = new Padding(6, 4, 6, 4);
         lblAyuda.Size = new Size(672, 38);
@@ -704,7 +714,7 @@ partial class FormPedido : Form
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
         BackColor = Color.FromArgb(30, 30, 30);
-        ClientSize = new Size(696, 690);
+        ClientSize = new Size(696, 721);
         Controls.Add(lblAyuda);
         Controls.Add(btnTodosLosPedidos);
         Controls.Add(btnProbarConexion);
@@ -715,6 +725,7 @@ partial class FormPedido : Form
         Controls.Add(btnCalcular);
         Controls.Add(btnLimpiar);
         Controls.Add(grpResumen);
+        Controls.Add(grpEntrega);
         Controls.Add(grpIngredientes);
         Controls.Add(grpPizza);
         Controls.Add(grpCliente);
@@ -740,9 +751,6 @@ partial class FormPedido : Form
 
     #endregion
 
-    // -------------------------------------------------------------------------
-    // Declaración de campos de controles (accesibles desde FormPedido.cs)
-    // -------------------------------------------------------------------------
     private GroupBox grpCliente;
     private TextBox txtTelefono;
     private TextBox txtCliente;
@@ -787,4 +795,5 @@ partial class FormPedido : Form
     private Button btnProbarConexion;
     private DataGridView dgvPedidos;
     private Label lblAyuda;
+    private Button btnEditaClientes;
 }

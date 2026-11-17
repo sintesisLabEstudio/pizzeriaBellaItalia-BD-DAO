@@ -5,44 +5,67 @@ using Microsoft.Data.SqlClient;
 namespace PizzeriaBellaItalia.Dominio
 {
     // DAO: acceso a datos CRUD para dbo.Pedidos.
+    // Cada pedido guarda su IdCliente (FK a dbo.Clientes): antes de guardar
+    // se resuelve el cliente en dbo.Clientes (se crea si no existe) y se
+    // envía su IdCliente en el INSERT/UPDATE.
     public class PedidoDAO
     {
         // INSERT: guarda un pedido completo; retorna true si insertó filas.
         public bool InsertarPedido(PedidoPizza p)
         {
             //construccion de query para insertar un pedido en la base de datos
+            //al final se pide el SCOPE_IDENTITY para conocer el IdPedido generado
             string query = @"INSERT INTO dbo.Pedidos 
-                (Cliente,Telefono,TamanoNombre,PrecioBaseTamano,MasaNombre,RecargoMasa,
+                (IdCliente,Cliente,Telefono,TamanoNombre,PrecioBaseTamano,MasaNombre,RecargoMasa,
                  QuesoExtra,Pepperoni,Champinones,Aceitunas,Tocino,EsDelivery,AplicaConvenioEstudiante,
                  CostoIngredientes,SubtotalPizza,MontoDescuento,CostoDelivery,NetoAfecto,MontoIva,TotalPagar)
                 VALUES
-                (@Cliente,@Telefono,@TamanoNombre,@PrecioBaseTamano,@MasaNombre,@RecargoMasa,
+                (@IdCliente,@Cliente,@Telefono,@TamanoNombre,@PrecioBaseTamano,@MasaNombre,@RecargoMasa,
                  @QuesoExtra,@Pepperoni,@Champinones,@Aceitunas,@Tocino,@EsDelivery,@AplicaConvenioEstudiante,
-                 @CostoIngredientes,@SubtotalPizza,@MontoDescuento,@CostoDelivery,@NetoAfecto,@MontoIva,@TotalPagar)";
-            
-            //establece la conexion con la base de datos
-            using (SqlConnection conexion = ConexionBD.ObtenerConexion()) 
-            
-            //ejecuta el comando sql con la query y la conexion
-            using (SqlCommand cmd = new SqlCommand(query, conexion)) 
-            {
-                //Asigna parámetros SQL a cmd con valores del objeto p de PedidoPizza.
-                CargarParametros(cmd, p);
+                 @CostoIngredientes,@SubtotalPizza,@MontoDescuento,@CostoDelivery,@NetoAfecto,@MontoIva,@TotalPagar);
+                SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
-                //retorna el cmd ejecutado y verifica si se insertaron filas
-                return cmd.ExecuteNonQuery() > 0; 
+            //1) valida el cliente en dbo.Clientes por nombre + telefono:
+            //   si ya existe se usa su IdCliente; si no, se inserta y se usa el IdCliente nuevo.
+            p.IdCliente = ResolverIdCliente(p.Cliente, p.Telefono);
+
+            //establece la conexion con la base de datos y abre la transaccion
+            //(si el INSERT del pedido falla, no queda el pedido a medias)
+            using (SqlConnection conexion = ConexionBD.ObtenerConexion())
+            using (SqlTransaction tran = conexion.BeginTransaction())
+            {
+                //ejecuta el comando sql con la query y la conexion
+                using (SqlCommand cmd = new SqlCommand(query, conexion, tran))
+                {
+                    //Asigna parámetros SQL a cmd con valores del objeto p de PedidoPizza.
+                    CargarParametros(cmd, p);
+
+                    //ExecuteScalar devuelve el IdPedido generado por el INSERT
+                    object resultado = cmd.ExecuteScalar();
+                    bool exito = resultado != null && resultado != DBNull.Value;
+
+                    //guarda en el objeto el IdPedido recien creado
+                    if (exito) p.IdPedido = Convert.ToInt32(resultado);
+
+                    //confirma la transaccion del pedido
+                    tran.Commit();
+                    return exito;
+                }
             }
 
         }
-
         // SELECT: lista pedidos para grilla (incluye IdPedido oculto en UI).
         public DataTable ObtenerPedidosDataTable()
         {
             //instancia de DataTable para almacenar los resultados de la consulta
             DataTable dt = new DataTable(); //dt es una tabla para llenar una consulta
 
-            //query para seleccionar los campos necesarios de la tabla Pedidos ordenados por IdPedido descendente
-            string query = "SELECT IdPedido,Cliente,Telefono,TamanoNombre,TotalPagar FROM dbo.Pedidos ORDER BY IdPedido DESC";
+            //query para seleccionar los campos necesarios del pedido con los datos
+            //del cliente que están en dbo.Clientes (relacionados por IdCliente)
+            string query = @"SELECT p.IdPedido, p.IdCliente, c.Cliente, c.Telefono, p.TamanoNombre, p.TotalPagar
+                             FROM dbo.Pedidos p
+                             INNER JOIN dbo.Clientes c ON c.IdCliente = p.IdCliente
+                             ORDER BY p.IdPedido DESC";
 
             //establece la conexion con la base de datos y ejecuta la consulta
             using (SqlConnection conexion = ConexionBD.ObtenerConexion())
@@ -55,13 +78,15 @@ namespace PizzeriaBellaItalia.Dominio
             //retorna la tabla de datos filtrada
             return dt;
         }
-
         // SELECT: busca por cliente con LIKE (parámetro @Filtro).
         public DataTable BuscarPedidosPorCliente(string filtroCliente)
         {
             DataTable dt = new DataTable();
-            string query = @"SELECT IdPedido,Cliente,Telefono,TamanoNombre,TotalPagar
-                             FROM dbo.Pedidos WHERE Cliente LIKE @Filtro ORDER BY IdPedido DESC";
+            string query = @"SELECT p.IdPedido, p.IdCliente, c.Cliente, c.Telefono, p.TamanoNombre, p.TotalPagar
+                             FROM dbo.Pedidos p
+                             INNER JOIN dbo.Clientes c ON c.IdCliente = p.IdCliente
+                             WHERE c.Cliente LIKE @Filtro
+                             ORDER BY p.IdPedido DESC";
             using (SqlConnection conexion = ConexionBD.ObtenerConexion())
             using (SqlCommand cmd = new SqlCommand(query, conexion))
             {
@@ -78,14 +103,15 @@ namespace PizzeriaBellaItalia.Dominio
             }
             return dt; //retorna un DataTable?
         }
-
         // SELECT por ID: retorna PedidoPizza completo o null si no existe.
         public PedidoPizza? ObtenerPedidoPorId(int id)
         {
-            string query = @"SELECT IdPedido,Cliente,Telefono,TamanoNombre,PrecioBaseTamano,MasaNombre,RecargoMasa,
-                                    QuesoExtra,Pepperoni,Champinones,Aceitunas,Tocino,EsDelivery,AplicaConvenioEstudiante,
-                                    CostoIngredientes,SubtotalPizza,MontoDescuento,CostoDelivery,NetoAfecto,MontoIva,TotalPagar
-                             FROM dbo.Pedidos WHERE IdPedido=@IdPedido";
+            string query = @"SELECT p.IdPedido, p.IdCliente, c.Cliente, c.Telefono, p.TamanoNombre, p.PrecioBaseTamano, p.MasaNombre, p.RecargoMasa,
+                                    p.QuesoExtra, p.Pepperoni, p.Champinones, p.Aceitunas, p.Tocino, p.EsDelivery, p.AplicaConvenioEstudiante,
+                                    p.CostoIngredientes, p.SubtotalPizza, p.MontoDescuento, p.CostoDelivery, p.NetoAfecto, p.MontoIva, p.TotalPagar
+                             FROM dbo.Pedidos p
+                             INNER JOIN dbo.Clientes c ON c.IdCliente = p.IdCliente
+                             WHERE p.IdPedido = @IdPedido";
             using (SqlConnection conexion = ConexionBD.ObtenerConexion())
             using (SqlCommand cmd = new SqlCommand(query, conexion))
             {
@@ -99,6 +125,7 @@ namespace PizzeriaBellaItalia.Dominio
                     return new PedidoPizza  //retorna el pedido con toda su cfg
                     {
                         IdPedido = Convert.ToInt32(r["IdPedido"]), //r permite leer el campo ?
+                        IdCliente = Convert.ToInt32(r["IdCliente"]), //FK al cliente del pedido
                         Cliente = r["Cliente"]?.ToString() ?? "",
                         Telefono = r["Telefono"]?.ToString() ?? "",
                         TamanoNombre = r["TamanoNombre"]?.ToString() ?? "",
@@ -123,33 +150,43 @@ namespace PizzeriaBellaItalia.Dominio
                 }
             }
         }
-
         // UPDATE: modifica un pedido por IdPedido.
         public bool ActualizarPedido(PedidoPizza p)
         {
             string query = @"UPDATE dbo.Pedidos SET
-                                Cliente=@Cliente,Telefono=@Telefono,TamanoNombre=@TamanoNombre,PrecioBaseTamano=@PrecioBaseTamano,
+                                IdCliente=@IdCliente,Cliente=@Cliente,Telefono=@Telefono,TamanoNombre=@TamanoNombre,PrecioBaseTamano=@PrecioBaseTamano,
                                 MasaNombre=@MasaNombre,RecargoMasa=@RecargoMasa,QuesoExtra=@QuesoExtra,Pepperoni=@Pepperoni,
                                 Champinones=@Champinones,Aceitunas=@Aceitunas,Tocino=@Tocino,EsDelivery=@EsDelivery,
                                 AplicaConvenioEstudiante=@AplicaConvenioEstudiante,CostoIngredientes=@CostoIngredientes,
                                 SubtotalPizza=@SubtotalPizza,MontoDescuento=@MontoDescuento,CostoDelivery=@CostoDelivery,
                                 NetoAfecto=@NetoAfecto,MontoIva=@MontoIva,TotalPagar=@TotalPagar
                              WHERE IdPedido=@IdPedido";
+
+            //1) valida el cliente en dbo.Clientes por nombre + telefono:
+            //   si ya existe se usa su IdCliente; si no, se inserta y se usa el IdCliente nuevo.
+            p.IdCliente = ResolverIdCliente(p.Cliente, p.Telefono);
+
             using (SqlConnection conexion = ConexionBD.ObtenerConexion())
-            using (SqlCommand cmd = new SqlCommand(query, conexion))
+            using (SqlTransaction tran = conexion.BeginTransaction())
             {
-                cmd.Parameters.AddWithValue("@IdPedido", p.IdPedido);
+                using (SqlCommand cmd = new SqlCommand(query, conexion, tran))
+                {
+                    cmd.Parameters.AddWithValue("@IdPedido", p.IdPedido);
 
-                //carga/asigna en cmd los valores de los parámetros SQL (@Cliente, @Telefono, etc.)
-                //tomándolos del objeto p.
-                CargarParametros(cmd, p);
+                    //carga/asigna en cmd los valores de los parámetros SQL (@IdCliente, @Cliente, etc.)
+                    //tomándolos del objeto p.
+                    CargarParametros(cmd, p);
 
-                //ejecuta la sentencia del comando (en este caso UPDATE dbo.Pedidos ...)
-                //y devuelve el número de filas afectadas
-                return cmd.ExecuteNonQuery() > 0;  
+                    //ejecuta la sentencia del comando (en este caso UPDATE dbo.Pedidos ...)
+                    //y devuelve el número de filas afectadas
+                    bool exito = cmd.ExecuteNonQuery() > 0;
+
+                    //confirma la transaccion del pedido
+                    tran.Commit();
+                    return exito;
+                }
             }
         }
-
         // DELETE: elimina un pedido por IdPedido.
         public bool EliminarPedido(int id)
         {
@@ -163,11 +200,29 @@ namespace PizzeriaBellaItalia.Dominio
                 return cmd.ExecuteNonQuery() > 0; 
             }
         }
-
-        //Asigna parámetros SQL desde PedidoPizza (excepto @IdPedido en UPDATE se agrega aparte).
-        //se ocupa en instartar y actualizar pedido
-        private static void CargarParametros(SqlCommand cmd, PedidoPizza p)
+        // Resuelve el IdCliente que se enviará en el pedido:
+        private static int ResolverIdCliente(string nombre, string telefono)
+        // 1) valida el cliente en dbo.Clientes con ClienteDAO.BuscarPorNombreYTelefono.
+        //    Si ya existe (mismo nombre y mismo teléfono) se usa su IdCliente y
+        //    el pedido se registra tal cual con ese IdCliente.
+        // 2) si no existe, se inserta el cliente en dbo.Clientes y se usa el IdCliente
+        //    generado para registrar el pedido.
         {
+            ClienteDAO clienteDao = new ClienteDAO();
+
+            //1) el cliente ya está registrado: se reutiliza su IdCliente
+            Cliente? cliente = clienteDao.BuscarPorNombreYTelefono(nombre, telefono);
+            if (cliente != null)
+                return cliente.IdCliente;
+
+            //2) el cliente no existe: se inserta y se toma el IdCliente nuevo
+            return clienteDao.insertarCliente(new Cliente { Nombre = nombre, Telefono = telefono });
+        }
+        //Asigna parámetros SQL desde PedidoPizza (excepto @IdPedido en UPDATE se agrega aparte).
+        private static void CargarParametros(SqlCommand cmd, PedidoPizza p)
+        //se ocupa en instartar y actualizar pedido
+        {
+            cmd.Parameters.AddWithValue("@IdCliente", p.IdCliente);
             cmd.Parameters.AddWithValue("@Cliente", p.Cliente);
             cmd.Parameters.AddWithValue("@Telefono", p.Telefono);
             cmd.Parameters.AddWithValue("@TamanoNombre", p.TamanoNombre);

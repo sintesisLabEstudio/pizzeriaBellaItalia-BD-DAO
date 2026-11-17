@@ -1,0 +1,1 @@
+ollama launch opencode --model qwen2.5-coder:1.5b

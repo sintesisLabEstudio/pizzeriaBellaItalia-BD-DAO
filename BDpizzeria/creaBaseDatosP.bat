@@ -8,6 +8,7 @@ cd /d "%~dp0"
 
 set "SERVIDOR=(localdb)\MSSQLLocalDB"
 set "SCRIPT=creaBaseDatosPizzeria.sql"
+set "SCRIPT_CLIENTES=actualizaBaseDatosClientes.sql"
 
 echo ============================================================
 echo  CREACION DE LA BASE DE DATOS - PIZZERIA BELLA ITALIA
@@ -39,6 +40,12 @@ if errorlevel 1 (
 echo Ejecutando script SQL...
 echo.
 "%SQLCMD%" -S "%SERVIDOR%" -E -b -i "%SCRIPT%"
+if errorlevel 1 goto :error
+
+echo.
+echo Aplicando tabla Clientes y relacion con Pedidos (IdCliente)...
+echo.
+"%SQLCMD%" -S "%SERVIDOR%" -E -b -i "%SCRIPT_CLIENTES%"
 if errorlevel 1 goto :error
 
 echo.

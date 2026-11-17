@@ -5,6 +5,9 @@ public class PedidoPizza
 {
     public int IdPedido { get; set; }                         // PK (IDENTITY).
 
+    // Relación con el cliente (FK a dbo.Clientes.IdCliente).
+    public int IdCliente { get; set; }                        // FK (obligatoria en la BD).
+
     // Datos del cliente.
     public string Cliente { get; set; } = "";
     public string Telefono { get; set; } = "";

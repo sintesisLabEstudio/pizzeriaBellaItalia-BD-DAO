@@ -18,7 +18,6 @@ namespace PizzeriaBellaItalia.Dominio
             conexion.Open();    // Abre la conexión; si falla, lanza SqlException.
             return conexion;    // El llamador debe cerrar la conexión.
         }
-
         // Prueba la conexión: true si abre correctamente, false ante error SQL.
         public static bool ProbarConexion()
         {

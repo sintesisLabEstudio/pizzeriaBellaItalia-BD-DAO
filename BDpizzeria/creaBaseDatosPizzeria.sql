@@ -13,13 +13,18 @@
 --   AplicaConvenioEstudiante, CostoIngredientes, SubtotalPizza, MontoDescuento,
 --   CostoDelivery, NetoAfecto, MontoIva, TotalPagar
 --
+-- NOTA: este script crea la base y las tablas dbo.Clientes y dbo.Pedidos
+--       (con la FK dbo.Pedidos.IdCliente -> dbo.Clientes.IdCliente).
+--       Para una base ya existente, la misma migración se puede aplicar con
+--       el script actualizaBaseDatosClientes.sql (idempotente).
+--
 -- Si la base ya existe pero sus archivos están en otra carpeta, se respalda
 -- (respaldo_pizzeriaDB.bak) y se vuelve a crear aquí.
 -- ============================================================================
 
 -- Ruta donde se crearán los archivos de datos.
 -- Si mueves el proyecto de carpeta, actualiza esta ruta y vuelve a ejecutar.
-DECLARE @DataDir NVARCHAR(400) = N'C:\desarrollo\Csoft\App_WinForms_Pizzeria_Bella_Italia_BD\Codigo_Funcional\BDpizzeria';
+DECLARE @DataDir NVARCHAR(400) = N'C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v2\Codigo_Funcional\BDpizzeria';
 DECLARE @Mdf     NVARCHAR(500) = @DataDir + N'\pizzeriaDB.mdf';
 DECLARE @Ldf     NVARCHAR(500) = @DataDir + N'\pizzeriaDB.ldf';
 DECLARE @Bak     NVARCHAR(500) = @DataDir + N'\respaldo_pizzeriaDB.bak';
@@ -53,7 +58,7 @@ GO
 -- ----------------------------------------------------------------------------
 IF DB_ID(N'PizzeriaDB') IS NULL
 BEGIN
-    DECLARE @DataDir NVARCHAR(400) = N'C:\desarrollo\Csoft\App_WinForms_Pizzeria_Bella_Italia_BD\Codigo_Funcional\BDpizzeria';
+    DECLARE @DataDir NVARCHAR(400) = N'C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v2\Codigo_Funcional\BDpizzeria';
     DECLARE @Mdf     NVARCHAR(500) = @DataDir + N'\pizzeriaDB.mdf';
     DECLARE @Ldf     NVARCHAR(500) = @DataDir + N'\pizzeriaDB.ldf';
 
@@ -70,7 +75,24 @@ USE [PizzeriaDB];
 GO
 
 -- ----------------------------------------------------------------------------
--- 3) Crear la tabla Pedidos si no existe
+-- 3) Crear la tabla Clientes si no existe
+-- ----------------------------------------------------------------------------
+IF OBJECT_ID(N'dbo.Clientes', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Clientes
+    (
+        IdCliente                  INT IDENTITY(1,1) NOT NULL
+                                    CONSTRAINT PK_Clientes PRIMARY KEY,
+
+        -- Datos del cliente (mismas características que en dbo.Pedidos)
+        Cliente                    NVARCHAR(100)     NOT NULL,
+        Telefono                   NVARCHAR(30)      NOT NULL
+    );
+END
+GO
+
+-- ----------------------------------------------------------------------------
+-- 4) Crear la tabla Pedidos si no existe
 -- ----------------------------------------------------------------------------
 IF OBJECT_ID(N'dbo.Pedidos', N'U') IS NULL
 BEGIN
@@ -78,6 +100,13 @@ BEGIN
     (
         IdPedido                  INT IDENTITY(1,1) NOT NULL
                                     CONSTRAINT PK_Pedidos PRIMARY KEY,
+
+        -- Relación con el cliente (clave foránea a dbo.Clientes)
+        IdCliente                 INT               NOT NULL
+                                    CONSTRAINT FK_Pedidos_Clientes
+                                    REFERENCES dbo.Clientes (IdCliente)
+                                    ON UPDATE CASCADE
+                                    ON DELETE NO ACTION,
 
         -- Datos del cliente
         Cliente                   NVARCHAR(100)     NOT NULL,
@@ -116,10 +145,14 @@ END
 GO
 
 -- ----------------------------------------------------------------------------
--- 4) Índices útiles para consultas
+-- 5) Índices útiles para consultas
 -- ----------------------------------------------------------------------------
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Pedidos_Cliente' AND object_id = OBJECT_ID(N'dbo.Pedidos'))
     CREATE INDEX IX_Pedidos_Cliente ON dbo.Pedidos(Cliente);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Pedidos_IdCliente' AND object_id = OBJECT_ID(N'dbo.Pedidos'))
+    CREATE INDEX IX_Pedidos_IdCliente ON dbo.Pedidos(IdCliente);
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Pedidos_FechaCreacion' AND object_id = OBJECT_ID(N'dbo.Pedidos'))
@@ -127,7 +160,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Pedidos_FechaCreacion
 GO
 
 -- ----------------------------------------------------------------------------
--- 5) Verificación: base, tabla y ubicación física de los archivos
+-- 6) Verificación: base, tablas y ubicación física de los archivos
 -- ----------------------------------------------------------------------------
 SELECT
     DB_NAME()        AS BaseDatos,
@@ -143,6 +176,13 @@ SELECT
     COUNT(*) AS Columnas
 FROM sys.columns
 WHERE object_id = OBJECT_ID(N'dbo.Pedidos');
+GO
+
+SELECT
+    OBJECT_NAME(OBJECT_ID(N'dbo.Clientes')) AS Tabla,
+    COUNT(*) AS Columnas
+FROM sys.columns
+WHERE object_id = OBJECT_ID(N'dbo.Clientes');
 GO
 
 -- ============================================================================

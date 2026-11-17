@@ -14,6 +14,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- La carpeta BDpizzeria\pruebaDao es un proyecto de pruebas aparte:
+         no se compila junto con la aplicación WinForms. -->
+    <Compile Remove="BDpizzeria\pruebaDao\**" />
+    <None Remove="BDpizzeria\pruebaDao\**" />
+    <EmbeddedResource Remove="BDpizzeria\pruebaDao\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
