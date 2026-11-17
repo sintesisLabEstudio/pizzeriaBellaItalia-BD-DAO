@@ -1,0 +1,75 @@
+DESCRIPCION DE LA APLICACION
+    Nombre: PizzeriaBellaItaliaBD
+    Tipo: Aplicacion de escritorio WinForms (.NET/C#) para gestion de pedidos de pizzeria (version con enfoque BD/estructura evolucionada)
+    Tecnologias: C#, .NET WinForms, arquitectura por capas (Dominio, Presentacion)
+    Objetivo: Registrar pedidos de pizza, calcular montos (ingredientes, descuento, delivery, IVA) y mantener un listado de pedidos en memoria
+    Componentes principales:
+        PedidoPizza (Dominio): modelo de pedido y reglas de calculo de precios
+        GestionPedidos (Dominio): administra la coleccion de pedidos en memoria
+        FormPedido (Presentacion): interfaz para captura de datos y visualizacion de resultados
+        Program: punto de entrada de la aplicacion
+    Funcionalidades clave:
+        Registro de cliente, telefono, tamano y tipo de masa
+        Seleccion de ingredientes adicionales y opciones (delivery, convenio estudiante)
+        Calculo de subtotal, descuento, recargo delivery, neto afecto, IVA y total
+        Almacenamiento de pedidos en lista en memoria y representacion textual del pedido
+DIAGRAMA DE CONTEXTO
+    [Usuario/Operador]
+        -> ingresa datos del pedido -> [PizzeriaBellaItaliaBD (WinForms)]
+            -> calcula montos -> [PedidoPizza]
+            -> almacena/lista pedidos -> [GestionPedidos]
+        <- detalle y total del pedido -> 
+    Sistemas externos: base de datos no integrada en la logica mostrada (gestion en memoria); estructura preparada para evolucion
+DIAGRAMA DE FLUJO
+    Inicio:
+        Program -> abre FormPedido
+    Registro:
+        Usuario completa datos y opciones -> crea/actualiza PedidoPizza
+        Se calculan costos (ingredientes, subtotal, descuento, delivery, IVA, total)
+        Se agrega pedido a GestionPedidos -> se muestra en interfaz/listado
+MER (MODELO ENTIDAD-RELACION)
+    Entidades conceptuales:
+        PEDIDO_PIZZA
+            Atributos: cliente, telefono, tamano, precio base, masa, recargo masa, ingredientes extra (flags), delivery, convenio estudiante
+        GESTION_PEDIDOS
+            Atributos: coleccion de pedidos
+    Relaciones:
+        GESTION_PEDIDOS (1) - (N) PEDIDO_PIZZA : contiene pedidos registrados
+MER EXTENDIDO (MER-X)
+    PEDIDO_PIZZA
+        Identificacion: cliente, telefono
+        Configuracion: tamanoNombre, precioBaseTamano, masaNombre, recargoMasa
+        Adicionales: quesoExtra, pepperoni, champinones, aceitunas, tocino
+        Opciones: esDelivery, aplicaConvenioEstudiante
+        Derivados: costoIngredientes, subtotalPizza, montoDescuento, costoDelivery, netoAfecto, montoIva, totalPagar
+    Reglas de negocio:
+        Ingrediente extra cuesta 800 por unidad seleccionada
+        Delivery agrega recargo fijo 2000
+        Convenio estudiante aplica 10% de descuento sobre subtotal pizza
+        IVA 19% sobre neto afecto
+DER (DIAGRAMA ENTIDAD-RELACION FISICO/RELACIONAL)
+    Persistencia fisica: no implementada (lista en memoria)
+    Estructura logica equivalente:
+        TABLA_PEDIDOS (conceptual)
+            id (implicito), cliente, telefono, tamano, masa, flags adicionales, delivery, convenio, totales calculados
+DIAGRAMA DE CLASES
+    Namespace PizzeriaBellaItalia.Dominio:
+        class PedidoPizza
+            + propiedades de cliente/configuracion/opciones
+            + ContarIngredientesExtra(): int
+            + CalcularCostoIngredientes(): int
+            + CalcularSubtotalPizza(): int
+            + CalcularMontoDescuento(): int
+            + CalcularCostoDelivery(): int
+            + CalcularNetoAfecto(): int
+            + CalcularMontoIva(): int
+            + CalcularTotalPagar(): int
+            + ToString(): string
+        class GestionPedidos
+            + pedidos: List<PedidoPizza>
+            + AgregarPedido(pedido: PedidoPizza): void
+    Namespace Presentacion:
+        class FormPedido : Form
+            - captura datos, invoca dominio y presenta resultados
+    Relaciones:
+        FormPedido -> GestionPedidos -> PedidoPizza

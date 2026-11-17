@@ -1,0 +1,60 @@
+FUENTES Y BASE DE DATOS — Pizzería Bella Italia
+================================================
+
+Esta carpeta contiene SOLO código fuente editable y los archivos de la base de datos.
+No contiene binarios compilados (ni bin/, ni obj/).
+
+CONTENIDO
+---------
+Program.cs                      Punto de entrada WinForms (Application.Run).
+PizzeriaBellaItalia.csproj      Proyecto .NET 10 Windows Forms + Microsoft.Data.SqlClient 7.1.2.
+PizzeriaBellaItalia.slnx        Solución (solo el proyecto principal).
+Dominio/                        Clases editables:
+                                  CalculadoraPedido.cs  (reglas de negocio y montos)
+                                  Cliente.cs / PedidoPizza.cs  (entidades)
+                                  ClienteDAO.cs / PedidoDAO.cs  (acceso a datos parametrizado)
+                                  ConexionBD.cs  (cadena y conexión a LocalDB)
+Presentacion/                   Formularios editables:
+                                  FormPedido.cs / .Designer.cs
+                                  FormClientes.cs / .Designer.cs
+BDpizzeria/                     Base de datos con todos sus detalles:
+                                  *.sql           creación, migración, carga, vaciado y desconexión
+                                  *.bat           utilitarios para sqlcmd
+                                  cfg.txt         configuración
+                                  pizzeriaDB.mdf / .ldf    archivos físicos de la base
+                                  respaldo_pizzeriaDB.bak  respaldo previo
+                                  PizzeriaDB_Final_Completa.bak  respaldo final (con UQ aplicada)
+                                  pruebaDao/      arnés de pruebas de los DAO (código fuente)
+                                  imagenesDeApoyo/ capturas de referencia
+flujo.txt                       Descripción paso a paso de cada botón.
+
+Los documentos generados (DIAGRAMA_FLUJO.md con 9 diagramas Mermaid y
+DIAGRAMA_FLUJO.txt en texto plano) se dejaron en la carpeta ../estudio/.
+README.md                       Documentación general del proyecto.
+
+CAMBIOS HECHOS A MANO EN ESTA ENTREGA
+-------------------------------------
+1. README.md: conflicto de merge resuelto (marcadores eliminados).
+2. ClienteDAO.cs: métodos agregados para el arnés de pruebas
+   (testInsertarCliente, ObtenerPedidosPorCliente, ObtenerClientePorId)
+   y helper EsClienteDuplicado(SqlException) para 2601/2627.
+3. PedidoDAO.cs: comentario sobre la restricción UNIQUE en ResolverIdCliente.
+4. FormClientes.cs: validación de cliente duplicado + MessageBox amigables.
+5. FormPedido.cs: MessageBox amigables al grabar/actualizar si el cliente ya existe.
+6. FormClientes.Designer.cs: btnListar cableado con btnListar_Click.
+7. Ambos .csproj: Microsoft.Data.SqlClient actualizado de 7.1.1 a 7.1.2.
+8. Scripts SQL: restricción UQ_Clientes_Cliente_Telefono (UNIQUE en Cliente + Telefono),
+   con limpieza de duplicados previos, idempotente.
+9. Restricción aplicada a la base real PizzeriaDB (4 clientes, 4 pedidos, sin duplicados).
+
+REQUISITOS PARA COMPILAR
+------------------------
+- .NET 10 SDK con cargas de trabajo Windows Forms.
+- Restaurar paquetes NuGet (Microsoft.Data.SqlClient 7.1.2).
+- SQL Server LocalDB con la base PizzeriaDB creada/adjunta (scripts en BDpizzeria/).
+
+NOTA
+----
+Los scripts .sql contienen rutas absolutas de la máquina de desarrollo original.
+Si mueves esta carpeta, actualiza la variable @DataDir en
+creaBaseDatosPizzeria.sql y cargaBaseDatos.sql antes de ejecutarlos.

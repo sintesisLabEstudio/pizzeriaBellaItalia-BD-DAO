@@ -1,0 +1,573 @@
+================================================================================
+DIAGRAMA DE FLUJO - PIZZERIA BELLA ITALIA
+VERSION TEXTO PLANO (sin Mermaid)
+================================================================================
+
+Indice
+  1. Mapa de archivos -> capas
+  2. Diagrama de clases (texto)
+  3. Flujo de arranque
+  4. Flujo de calculo en vivo
+  5. Flujo Calcular / Grabar (CREATE)
+  6. Flujo de busquedas y detalle (READ)
+  7. Flujo UPDATE / DELETE / acciones auxiliares
+  8. Flujo FormClientes y cruce a FormPedido
+  9. Mapa objeto -> respuesta en pantalla
+ 10. Modelo de datos (texto)
+ 11. Resumen del viaje de los datos
+
+
+================================================================================
+1. MAPA DE ARCHIVOS -> CAPAS
+================================================================================
+
+PizzeriaBellaItalia.slnx
+ |
+ +-- PizzeriaBellaItalia.csproj  (.NET 10 WinForms + SqlClient 7.1.2)
+ |    |
+ |    +-- Program.cs --------------------------> Main() [STAThread]
+ |    |
+ |    +-- Presentacion/
+ |    |    FormPedido.Designer.cs -------------> InitializeComponent()
+ |    |                                          (crea controles y cablea eventos)
+ |    |    FormPedido.cs -----------------------> pantalla de pedidos
+ |    |    FormClientes.Designer.cs ------------> InitializeComponent()
+ |    |    FormClientes.cs ---------------------> pantalla de clientes
+ |    |
+ |    +-- Dominio/
+ |         CalculadoraPedido.cs ----------------> Tamanos, Masas, DatosPedido, Calcular()
+ |         PedidoPizza.cs ----------------------> entidad pedido (montos)
+ |         Cliente.cs --------------------------> entidad cliente
+ |         PedidoDAO.cs ------------------------> CRUD dbo.Pedidos
+ |         ClienteDAO.cs -----------------------> CRUD dbo.Clientes + EsClienteDuplicado()
+ |         ConexionBD.cs -----------------------> ObtenerConexion(), ProbarConexion()
+ |
+ +-- BDpizzeria/
+      creaBaseDatosPizzeria.sql ----------------> DDL + UQ_Clientes_Cliente_Telefono
+      actualizaBaseDatosClientes.sql -----------> migracion idempotente + UNIQUE
+      cargaBaseDatos.sql / vaciaBase.sql -------> attach / limpieza
+      pruebaDao/ --------------------------------> arnes de pruebas de los DAO
+      cfg.txt, *.bat, *.mdf, *.ldf, *.bak ------> base de datos y utilitarios
+
+Cruce entre pantallas:
+
+  FormPedido --btnEditaClientes_Click / ShowDialog()--> FormClientes
+  FormClientes --btnSelecciona_Click / CargarClienteDesdeSeleccion()--> FormPedido
+
+
+================================================================================
+2. DIAGRAMA DE CLASES (TEXTO)
+================================================================================
+
+Program
+  + Main()
+
+FormPedido
+  - pedidoDao : PedidoDAO
+  - cargandoFormulario : bool
+  + FormPedido()
+  - FormPedido_Load()
+  - CargarPedidos()
+  - ConstruirPedido() : PedidoPizza
+  - Calculo_Changed()
+  - MostrarResumen(p)
+  - LlenaForm(p)
+  - vistaPedido(id)
+  - LimpiarFormulario()
+  - MostrarEstado(texto, exito)
+  - ConfigurarAyuda()
+  + CargarClienteDesdeSeleccion(nombre, telefono)
+  - BtnCalcular_Click()
+  - btnBuscaPedidosXCliente_Click()
+  - btnBuscarPedidoPorId_Click()
+  - btnTodosLosPedidos_Click()
+  - btnActualizarPedido_Click()
+  - btnEliminarPedido_Click()
+  - btnProbarConexion_Click()
+  - btnEditaClientes_Click()
+  - BtnLimpiar_Click()
+  - BtnSalir_Click()
+  - dgvPedidos_CellClick()
+
+FormClientes
+  - clienteDao : ClienteDAO
+  - idClienteSeleccionado : int
+  + ClienteSeleccionado : Cliente
+  + FormClientes()
+  - FormClientes_Load()
+  - CargarClientes(criterio)
+  - PrepararNuevoCliente()
+  - presentaCamposParaEdicion()
+  - btnGrabar_Click()
+  - btnElimina_Click()
+  - btnBuscar_Click()
+  - btnSelecciona_Click()
+  - btnNuevo_Click()
+  - btnListar_Click()
+  - dgvClientes_CellDoubleClick()
+
+PedidoDAO
+  + InsertarPedido(p) : bool
+  + ObtenerPedidosDataTable() : DataTable
+  + BuscarPedidosPorCliente(filtro) : DataTable
+  + ObtenerPedidoPorId(id) : PedidoPizza
+  + ActualizarPedido(p) : bool
+  + EliminarPedido(id) : bool
+  - ResolverIdCliente(nombre, telefono) : int
+  - CargarParametros(cmd, p)
+
+ClienteDAO
+  + ObtenerClientesDataTable() : DataTable
+  + BuscarPorNombreYTelefono(nombre, telefono) : Cliente
+  + insertarCliente(c) : int
+  + InsertarClienteConTransaccion(c, cn, tran) : int
+  + ObtenerOCrearIdCliente(nombre, telefono, cn, tran) : int
+  + ActualizarCliente(c) : bool
+  + EliminarCliente(id) : bool
+  + validaClienteSinPedidos(id) : bool
+  + BuscarClientesDataTable(criterio) : DataTable
+  + testInsertarCliente() : string
+  + ObtenerPedidosPorCliente(id) : DataTable
+  + ObtenerClientePorId(id) : Cliente
+  + EsClienteDuplicado(ex) : bool  [static]
+
+ConexionBD
+  + CadenaConexion : string
+  + ObtenerConexion() : SqlConnection
+  + ProbarConexion() : bool
+
+CalculadoraPedido
+  + Tamanos : IReadOnlyDictionary
+  + Masas : IReadOnlyDictionary
+  + Calcular(datos) : PedidoPizza
+
+DatosPedido (clase anidada en CalculadoraPedido)
+  Cliente, Telefono, Tamano, Masa
+  QuesoExtra, Pepperoni, Champinones, Aceitunas, Tocino
+  EsDelivery, AplicaConvenioEstudiante
+
+PedidoPizza
+  IdPedido, IdCliente, Cliente, Telefono
+  TamanoNombre, PrecioBaseTamano, MasaNombre, RecargoMasa
+  5 flags de ingredientes, EsDelivery, AplicaConvenioEstudiante
+  CostoIngredientes, SubtotalPizza, MontoDescuento
+  CostoDelivery, NetoAfecto, MontoIva, TotalPagar
+
+Cliente
+  IdCliente, Nombre, Telefono
+
+Relaciones:
+  Program .........> FormPedido          (crea y ejecuta)
+  FormPedido ------> PedidoDAO           (pedidoDao)
+  FormPedido ------> ClienteDAO          (EsClienteDuplicado)
+  FormPedido ------> CalculadoraPedido
+  FormPedido ------> ConexionBD
+  FormPedido ......> FormClientes        (ShowDialog)
+  FormClientes ----> FormPedido          (CargarClienteDesdeSeleccion)
+  FormClientes ----> ClienteDAO
+  PedidoDAO -------> PedidoPizza         (crea / devuelve)
+  PedidoDAO -------> ClienteDAO          (ResolverIdCliente)
+  PedidoDAO -------> ConexionBD
+  ClienteDAO ------> Cliente
+  ClienteDAO ------> ConexionBD
+  CalculadoraPedido *-- DatosPedido
+  CalculadoraPedido ..> PedidoPizza      (Calcular devuelve)
+
+
+================================================================================
+3. FLUJO DE ARRANQUE
+================================================================================
+
+[Program.cs Main()]
+  |
+  +-- ApplicationConfiguration.Initialize()
+  |
+  +-- new FormPedido()
+  |     |
+  |     +-- FormPedido.Designer.cs : InitializeComponent()
+  |           crea: grpCliente, grpPizza, grpIngredientes, grpEntrega,
+  |                 grpResumen, dgvPedidos, lblAyuda
+  |           cablea: Click, CheckedChanged, SelectedIndexChanged,
+  |                   CellClick, Load
+  |
+  +-- Application.Run(form)
+        |
+        v
+  [Load] FormPedido_Load()
+        |
+        +-- cargandoFormulario = true
+        +-- CalculadoraPedido.Tamanos.Keys -> cboTamano
+        |     selecciona "Mediana"
+        +-- CalculadoraPedido.Masas.Keys -> cboMasa
+        |     selecciona "Masa Tradicional"
+        +-- grpResumen.Enabled = false
+        +-- lbl*Valor = "$ 0 CLP"
+        +-- cargandoFormulario = false
+        +-- ConfigurarAyuda() -> eventos MouseEnter/Leave de 9 botones
+        |
+        v
+  CargarPedidos()
+        |
+        +-- PedidoDAO.ObtenerPedidosDataTable()
+        |     +-- ConexionBD.ObtenerConexion()
+        |     +-- SELECT ... FROM dbo.Pedidos p
+        |            INNER JOIN dbo.Clientes c ON c.IdCliente = p.IdCliente
+        |            ORDER BY p.IdPedido DESC
+        |     +-- devuelve DataTable
+        |
+        +-- dgvPedidos.DataSource = DataTable
+        +-- oculta IdPedido e IdCliente
+        +-- titulos: Cliente | Telefono | Tamano | Total a Pagar
+
+
+================================================================================
+4. FLUJO DE CALCULO EN VIVO (Detalle de Pago)
+================================================================================
+
+[cboTamano] [cboMasa] [chkQuesoExtra] [chkPepperoni] [chkChampinones]
+[chkAceitunas] [chkTocino] [rdbDelivery] [rdbRetiro] [chkConvenioEstudiante]
+        |
+        |  SelectedIndexChanged / CheckedChanged
+        v
+  Calculo_Changed()
+        |
+        +-- cargandoFormulario == true ? -----> return (no recalcula)
+        +-- grpResumen.Enabled == false ? ----> return (aun no hubo primer calculo)
+        +-- txtCliente vacio ? --------------> return
+        |
+        v
+  ConstruirPedido()
+        |
+        +-- arma CalculadoraPedido.DatosPedido con los controles
+        |
+        v
+  CalculadoraPedido.Calcular(datos)
+        |
+        +-- precioBase  : 5000 / 8500 / 12000
+        +-- recargoMasa : 0 / 0 / 1500
+        +-- extras      : 800 * cantidad de checks activos
+        +-- descuento   : 10% del subtotal si convenio
+        +-- delivery    : 2000 si rdbDelivery
+        +-- iva         : 19% del neto
+        +-- total       : neto + iva
+        |
+        v
+  PedidoPizza (objeto con montos)
+        |
+        v
+  MostrarResumen(p)
+        |
+        +-- lblSubtotalValor    = "$ X CLP"
+        +-- lblDescuentoValor   = "- $ X CLP"
+        +-- lblDeliveryValor    = "+ $ X CLP"
+        +-- lblIvaValor         = "+ $ X CLP"
+        +-- lblTotalValor       = "$ X CLP"
+        +-- grpResumen.Enabled = true
+
+
+================================================================================
+5. FLUJO CALCULAR / GRABAR (CREATE)
+================================================================================
+
+[btnCalcular Click] -> BtnCalcular_Click()
+  |
+  +-- txtCliente vacio ?
+  |     SI -> MessageBox "Ingrese el nombre del cliente" + txtCliente.Focus() -> FIN
+  |     NO ->
+  |
+  +-- ConstruirPedido() -> PedidoPizza con montos
+  +-- MostrarResumen(p) -> 5 labels del grpResumen
+  +-- MessageBox confirmacion: "¿Grabar pedido? Total: $..."
+  |
+  +-- RESPUESTA = No -> no inserta, el resumen queda visible -> FIN
+  |
+  +-- RESPUESTA = Si ->
+        |
+        v
+  PedidoDAO.InsertarPedido(p)
+        |
+        +-- ClienteDAO.ResolverIdCliente(nombre, telefono)
+        |     |
+        |     +-- BuscarPorNombreYTelefono()
+        |     |     SI existe -> devuelve IdCliente existente
+        |     |     NO existe -> insertarCliente() -> SCOPE_IDENTITY()
+        |     |
+        |     +-- p.IdCliente = IdCliente resuelto
+        |
+        +-- ConexionBD.ObtenerConexion() + BeginTransaction()
+        +-- CargarParametros(cmd, p)  [21 parametros]
+        +-- INSERT dbo.Pedidos + SELECT SCOPE_IDENTITY() -> IdPedido
+        +-- tran.Commit()
+        |
+        +-- SI OK:
+        |     +-- lblAyuda verde "Pedido guardado exitosamente."
+        |     +-- MessageBox exito
+        |     +-- LimpiarFormulario()
+        |     +-- CargarPedidos() -> dgvPedidos actualizada
+        |
+        +-- SqlException 2601/2627 (UQ_Clientes_Cliente_Telefono):
+              +-- lblAyuda roja
+              +-- MessageBox "Cliente duplicado. Seleccione el cliente desde Clientes"
+        |
+        +-- Otra Exception:
+              +-- lblAyuda roja + MessageBox "Error al grabar: ..."
+
+
+================================================================================
+6. FLUJO DE BUSQUEDAS Y DETALLE (READ)
+================================================================================
+
+A) btnBuscaPedidosXCliente_Click  (lee txtCliente)
+  |
+  +-- filtro vacio -> lblAyuda roja + MessageBox validacion + Focus -> FIN
+  +-- filtro con valor
+        |
+        v
+  PedidoDAO.BuscarPedidosPorCliente(filtro)
+        |   WHERE c.Cliente LIKE @Filtro
+        v
+  DataTable -> dgvPedidos.DataSource
+        +-- oculta IdPedido / IdCliente
+        +-- titulos visibles
+        +-- lblAyuda verde "Busqueda por cliente realizada."
+
+B) btnBuscarPedidoPorId_Click  (lee txtIdPedido)
+  |
+  +-- int.TryParse <= 0 -> MessageBox "Ingrese un ID valido" + Focus -> FIN
+  +-- ID valido ->
+        |
+        v
+  PedidoDAO.ObtenerPedidoPorId(id) -> PedidoPizza o null
+        |
+        +-- DataTable temporal:
+        |     IdPedido | Cliente | Telefono | TamanoNombre | TotalPagar
+        |     (1 fila si existe, vacia si no)
+        |     -> dgvPedidos.DataSource + titulos
+        |
+        +-- null -> lblAyuda roja + MessageBox "No se encontro el pedido"
+        |
+        +-- existe -> lblAyuda verde
+              |
+              v
+        vistaPedido(id)
+              |
+              +-- PedidoDAO.ObtenerPedidoPorId(id) -> PedidoPizza
+              +-- LlenaForm(p):
+              |     txtIdPedido, txtCliente, txtTelefono
+              |     cboTamano, cboMasa
+              |     5 chk* + rdbDelivery/rdbRetiro + chkConvenio
+              +-- MostrarResumen(p) -> 5 labels
+
+C) btnTodosLosPedidos_Click -> CargarPedidos() -> dgvPedidos completa
+
+D) dgvPedidos_CellClick (columna oculta IdPedido)
+        -> vistaPedido(id) -> LlenaForm(p) -> MostrarResumen(p)
+
+
+================================================================================
+7. FLUJO UPDATE / DELETE / ACCIONES AUXILIARES (FormPedido)
+================================================================================
+
+UPDATE - btnActualizarPedido_Click
+  |
+  +-- ID invalido o txtCliente vacio -> MessageBox validacion -> FIN
+  +-- ConstruirPedido() -> p.IdPedido = id
+  +-- PedidoDAO.ActualizarPedido(p)
+  |     +-- ResolverIdCliente()
+  |     +-- UPDATE dbo.Pedidos ... + tran.Commit()
+  |
+  +-- true  -> MessageBox exito + CargarPedidos()
+  +-- false -> MessageBox aviso
+  +-- 2601/2627 -> lblAyuda roja + MessageBox "Cliente duplicado"
+  +-- otra ex -> MessageBox "Error al actualizar"
+
+DELETE - btnEliminarPedido_Click
+  |
+  +-- ID invalido -> MessageBox validacion -> FIN
+  +-- MessageBox confirmacion "¿Esta seguro?"
+  |     No -> FIN
+  |     Si ->
+  |        PedidoDAO.EliminarPedido(id)
+  |           +-- true  -> lblAyuda verde + MessageBox
+  |           |           +-- LimpiarFormulario() + CargarPedidos()
+  |           +-- false -> lblAyuda roja + MessageBox aviso
+
+LIMPIAR - BtnLimpiar_Click -> LimpiarFormulario()
+  txt vacios, Mediana, Masa Tradicional, Retiro, checks false,
+  labels "$ 0 CLP", grpResumen deshabilitado, txtCliente.Focus()
+
+CONEXION - btnProbarConexion_Click
+  ConexionBD.ProbarConexion() -> bool
+     -> lblAyuda verde/roja + MessageBox con cadena y estado
+
+AYUDA - MouseEnter/MouseLeave en 9 botones
+  ConfigurarAyuda() -> Vincular() -> MostrarEstado() -> lblAyuda
+
+CLIENTES - btnEditaClientes_Click -> new FormClientes().ShowDialog() (modal)
+
+SALIR - btnConfirmar_Click -> BtnSalir_Click
+  MessageBox confirmacion -> Si -> Close()
+
+
+================================================================================
+8. FLUJO FORMCLIENTES Y CRUCE A FORMPEDIDO
+================================================================================
+
+FormPedido.btnEditaClientes_Click
+  |
+  v
+new FormClientes().ShowDialog()
+  |
+  v
+FormClientes_Load
+  |
+  +-- CargarClientes()
+  |     +-- ClienteDAO.ObtenerClientesDataTable()
+  |     +-- dgvClientes.DataSource + encabezados
+  +-- PrepararNuevoCliente()
+        txt vacios, idClienteSeleccionado = 0, btnGrabar.Text = "Grabar"
+
+ACCIONES DE FormClientes:
+
+btnGrabar_Click  (cableado en el constructor)
+  |
+  +-- txtNombre o txtTelefono vacios -> MessageBox "Datos incompletos"
+  +-- BuscarPorNombreYTelefono() -> Cliente?
+  |     +-- existe otro id -> MessageBox "Cliente duplicado" + txtTelefono.Focus()
+  |     +-- no existe ->
+  |           idClienteSeleccionado == 0 ?
+  |             SI -> ClienteDAO.insertarCliente() -> SCOPE_IDENTITY()
+  |             NO -> ClienteDAO.ActualizarCliente() -> bool
+  |           -> MessageBox exito
+  |           -> PrepararNuevoCliente() + CargarClientes()
+  +-- catch 2601/2627 -> MessageBox "Cliente duplicado"
+
+btnElimina_Click
+  |
+  +-- sin fila -> MessageBox "Seleccione un cliente"
+  +-- validaClienteSinPedidos(id) == false
+  |     -> MessageBox "Accion Denegada: tiene pedidos"
+  +-- confirma Si -> ClienteDAO.EliminarCliente(id)
+        -> MessageBox + recargar grilla
+
+dgvClientes.CellDoubleClick  (cableado en el constructor)
+  -> presentaCamposParaEdicion()
+        txtNombre, txtTelefono, idClienteSeleccionado
+        btnGrabar.Text = "Actualizar"
+
+btnNuevo_Click        -> PrepararNuevoCliente()
+btnBuscar_Click       -> CargarClientes(criterio) -> BuscarClientesDataTable()
+btnListar_Click       -> PrepararNuevoCliente() + CargarClientes()  [YA CABLEADO]
+
+btnSelecciona_Click
+  |
+  +-- txtNombre/txtTelefono vacios -> MessageBox + Focus
+  +-- FormPedido abierto ?
+  |     SI -> frmPedido.CargarClienteDesdeSeleccion(nombre, telefono)
+  |           + BringToFront() + this.Close()
+  |     NO -> new FormPedido().Show() + CargarClienteDesdeSeleccion()
+  |
+  v
+FormPedido.CargarClienteDesdeSeleccion()
+  -> txtCliente, txtTelefono
+  -> lblAyuda verde "Cliente '...' cargado para el pedido."
+  -> txtCliente.Focus()
+
+
+================================================================================
+9. MAPA OBJETO -> RESPUESTA EN PANTALLA
+================================================================================
+
+FormPedido
+--------------------------------------------------------------------------------
+Componente                          Evento            Objeto        Respuesta
+--------------------------------------------------------------------------------
+Form                                Load              Keys/DataTable combos + grilla + "$ 0 CLP"
+cboTamano/cboMasa/5 chk/rdb         Changed           DatosPedido   5 lbl*Valor del resumen
+                                                      PedidoPizza
+btnCalcular                         Click             PedidoPizza   MessageBox total/confirmacion/
+                                                      bool          exito o duplicado; grilla;
+                                                      DataTable     limpieza; lblAyuda
+btnBuscaPedidosXCliente             Click             DataTable     dgv filtrada + lblAyuda
+btnBuscarPedidoPorId                Click             PedidoPizza   1 fila en grilla + todo el form
+                                                      DataTable     + resumen
+btnTodosLosPedidos                  Click             DataTable     grilla completa
+dgvPedidos                          CellClick         PedidoPizza   LlenaForm + MostrarResumen
+btnActualizarPedido                 Click             bool/ex       MessageBox + grilla
+btnEliminarPedido                   Click             bool          MessageBox + limpieza + grilla
+btnProbarConexion                   Click             bool          lblAyuda + MessageBox cadena
+btnEditaClientes                    Click             FormClientes  abre ventana modal
+btnLimpiar                          Click             -             controles y montos a cero
+btnConfirmar                        Click             DialogResult  cierre de la app
+9 botones                           MouseEnter/Leave  string        lblAyuda con ayuda
+
+FormClientes
+--------------------------------------------------------------------------------
+Componente                          Evento            Objeto        Respuesta
+--------------------------------------------------------------------------------
+Form                                Load              DataTable     dgvClientes + limpieza
+btnGrabar                           Click             Cliente?      MessageBox exito/duplicado
+                                                      int/bool      grilla recargada
+btnElimina                          Click             bool          MessageBox + grilla
+btnBuscar                           Click             DataTable     dgvClientes filtrada
+btnNuevo                            Click             -             campos limpios
+btnSelecciona                       Click             string,string FormPedido: txt + lblAyuda
+dgvClientes                         CellDoubleClick   DataRow       campos en modo edicion
+btnListar                           Click             DataTable     campos limpios + grilla
+--------------------------------------------------------------------------------
+
+
+================================================================================
+10. MODELO DE DATOS (TEXTO)
+================================================================================
+
+CLIENTES  ||---o{  PEDIDOS
+          relacion: 1:N por IdCliente
+          FK: dbo.Pedidos.IdCliente -> dbo.Clientes.IdCliente
+          ON UPDATE CASCADE / ON DELETE NO ACTION
+
+CLIENTES
+  IdCliente   INT IDENTITY  PK
+  Cliente     NVARCHAR(100) UK   \
+  Telefono    NVARCHAR(30)  UK   /  UQ_Clientes_Cliente_Telefono (UNIQUE)
+                                     + rechaza SqlException 2601/2627
+
+PEDIDOS  (21 columnas + auditoria)
+  IdPedido                 INT IDENTITY PK
+  IdCliente                INT FK
+  Cliente, Telefono        NVARCHAR
+  TamanoNombre, PrecioBaseTamano
+  MasaNombre, RecargoMasa
+  QuesoExtra, Pepperoni, Champinones, Aceitunas, Tocino   BIT
+  EsDelivery, AplicaConvenioEstudiante                     BIT
+  CostoIngredientes, SubtotalPizza, MontoDescuento
+  CostoDelivery, NetoAfecto, MontoIva, TotalPagar          INT
+  FechaCreacion            DATETIME DEFAULT GETDATE()
+
+
+================================================================================
+11. RESUMEN DEL VIAJE DE LOS DATOS
+================================================================================
+
+1) Entrada del usuario
+   -> controles WinForms declarados en *.Designer.cs
+
+2) Evento
+   -> metodo *_Click / *_Changed / CellClick en FormPedido.cs o FormClientes.cs
+
+3) Transformacion
+   -> DatosPedido -> CalculadoraPedido.Calcular() -> PedidoPizza (objeto con montos)
+
+4) Persistencia
+   -> PedidoDAO / ClienteDAO -> ConexionBD.ObtenerConexion()
+   -> SQL parametrizado -> PizzeriaDB (LocalDB)
+
+5) Respuesta en pantalla
+   -> DataTable .............. dgvPedidos / dgvClientes
+   -> PedidoPizza ............ LlenaForm + MostrarResumen (5 labels)
+   -> bool / SqlException .... MessageBox (incluido "Cliente duplicado")
+   -> string ................. lblAyuda con color verde / rojo / blanco
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

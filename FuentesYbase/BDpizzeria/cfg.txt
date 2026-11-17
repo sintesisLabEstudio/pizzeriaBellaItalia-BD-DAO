@@ -1,0 +1,12 @@
+origen de datos
+Microsoft SQL server (micosoft sqlClient)
+
+nombre del servidor
+(localdb)\MSSQLLocalDB
+
+cifrado
+optional false
+y confiar
+
+nombre de la bd
+pizzeriaDB
