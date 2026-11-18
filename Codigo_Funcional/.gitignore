@@ -266,6 +266,13 @@ ServiceFabricBackup/
 *.ldf
 *.ndf
 
+# La base del proyecto SÍ se entrega con el código (el patrón global de arriba
+# se ignora; estas excepciones la incluyen), igual que sus copias en respaldo\.
+!BDpizzeria/pizzeriaDB.mdf
+!BDpizzeria/pizzeriaDB.ldf
+!BDpizzeria/respaldo/pizzeriaDB.mdf
+!BDpizzeria/respaldo/pizzeriaDB.ldf
+
 # Business Intelligence projects
 *.rdl.data
 *.bim.layout
