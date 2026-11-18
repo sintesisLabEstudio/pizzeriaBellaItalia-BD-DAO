@@ -25,6 +25,7 @@ Trabajo final de **Construcción de Software** — Instituto Profesional Virgini
 - [Verificación](#verificación)
 - [Documentación](#documentación)
 - [Información académica](#información-académica)
+- [Autor](#autor)
 
 ---
 
@@ -227,3 +228,9 @@ dotnet run --project ..\..\..\PizzeriaBellaItalia.csproj
 - **Entrega**: 25 de noviembre, 21:30 (100 puntos)
 
 Los documentos originales de la consigna se conservan en [`estudio/`](estudio/) (`02_requerimientos.txt`, `03_guia.txt` y los PDFs).
+
+## Autor
+
+**Jorge Vera Videla** — Estudiante de Construcción de Software, Instituto Profesional Virginio Gómez, Sede Concepción.
+
+Desarrollo, persistencia, comandos de base de datos y documentación de este proyecto.
