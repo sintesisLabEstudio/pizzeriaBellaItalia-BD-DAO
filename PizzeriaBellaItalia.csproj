@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.2" />
+    <!-- <PackageReference Include="System.Data.SqlClient" Version="4.9.1" /> (no se usa por el momento; se unifica en Microsoft.Data.SqlClient) -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- La carpeta BDpizzeria\pruebaDao es un proyecto de pruebas aparte:
+         no se compila junto con la aplicación WinForms. -->
+    <Compile Remove="BDpizzeria\pruebaDao\**" />
+    <None Remove="BDpizzeria\pruebaDao\**" />
+    <EmbeddedResource Remove="BDpizzeria\pruebaDao\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- FuentesYbase es una copia de solo fuentes y ejecutablePortable es la
+         publicación. Se excluyen para que el SDK no compile recursos duplicados. -->
+    <Compile Remove="FuentesYbase\**" />
+    <None Remove="FuentesYbase\**" />
+    <EmbeddedResource Remove="FuentesYbase\**" />
+    <Compile Remove="ejecutablePortable\**" />
+    <None Remove="ejecutablePortable\**" />
+    <EmbeddedResource Remove="ejecutablePortable\**" />
+  </ItemGroup>
+
+</Project>
