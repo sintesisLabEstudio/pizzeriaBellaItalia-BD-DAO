@@ -376,3 +376,17 @@ obj/
 .vs/
 .git/
 
+
+# Solo se versiona Codigo_Funcional; el resto se mantiene local
+/BDpizzeria/
+/Dominio/
+/Presentacion/
+/estudio/
+/documentacion/
+/documerntacionPizzeriaDAO/
+/*.zip
+/*.url
+/Program.cs
+/README.md
+/PizzeriaBellaItalia.csproj
+/PizzeriaBellaItalia.slnx
