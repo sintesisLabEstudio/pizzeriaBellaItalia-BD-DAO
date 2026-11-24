@@ -13,7 +13,7 @@ Documentación técnica de software | Versión de código v4B | ADO.NET + DAO
 | Resultados de Aprendizaje | D2.C2-RA3: Construir software aplicando lenguajes de programación de base de datos. D2.C1-RA2: Generar documentación técnica de las aplicaciones programadas. |
 
 
-| Alcance de esta documentación El documento describe la implementación entregada en el código fuente v4B: formularios WinForms, entidades, reglas de negocio, acceso a datos ADO.NET, operaciones CRUD, consultas parametrizadas y transacciones. Los elementos no entregados (DDL SQL, diseñador de clientes completo y registro Git) se identifican como pendientes de verificación; no se completan mediante suposiciones. |
+| Alcance de esta documentación El documento describe la implementación entregada en el código fuente v4B: formularios WinForms, entidades, reglas de negocio, acceso a datos ADO.NET, operaciones CRUD, consultas parametrizadas y transacciones. El DDL se adjunta en `BDpizzeria/scriptsSql/01_Estructura_PizzeriaDB.sql` y se reproduce en la sección 5. El historial Git está disponible en el repositorio indicado en la sección 7. |
 | --- |
 
 ## 1. Ficha Técnica y Descripción General del Sistema
@@ -26,14 +26,14 @@ Pizzería Bella Italia requiere apoyar la atención y el registro de pedidos med
 | Arquitectura lógica | Presentación, Dominio/Reglas, Acceso a Datos y Persistencia (4 estratos funcionales) |
 | Lenguaje / Framework | C# sobre .NET 10 para Windows (net10.0-windows) |
 | Acceso a Datos | ADO.NET mediante Microsoft.Data.SqlClient 7.1.2 |
-| Motor de Base de Datos | SQL Server LocalDB: (localdb)\MSSQLLocalDB / PizzeriaDB |
+| Motor de Base de Datos | SQL Server Express LocalDB: (localdb)\MSSQLLocalDB / PizzeriaDB |
 | Patrones y mecanismos | DAO, helper estático de conexión, entidades POO, consultas parametrizadas y SqlTransaction |
 | Módulos principales | Program.cs, PedidoPizza.cs, Cliente.cs, CalculadoraPedido.cs, ConexionBD.cs, PedidoDAO.cs, ClienteDAO.cs, FormPedido.cs y FormClientes.cs |
 | Control de versiones | Git local / GitHub declarado en la documentación anterior; no se adjuntó historial verificable de commits para v4B |
 
 Objetivo funcional: registrar pedidos calculados de manera consistente, conservar la relación con el cliente y ofrecer funciones de consulta, modificación y eliminación tanto para pedidos como para clientes.
 ## 2. Diagrama de Arquitectura en Capas
-Separación lógica de responsabilidades observada en los archivos y dependencias del código v4B:
+Separación lógica de responsabilidades observada en los archivos y dependencias del código v4B. En términos del modelo de 2 capas: **Capa de Presentación** (GUI WinForms: `FormPedido` y `FormClientes`) y **Capa de Dominio/Datos** (entidades POO, reglas de negocio, DAO y `ConexionBD`), con la persistencia física como estrato de soporte:
 ![Figura](media/image1.png)
 **Figura 2.1: Arquitectura lógica del POS; el flujo de datos llega a PizzeriaDB a través de las clases DAO y ConexionBD.**
 **Responsabilidades por estrato:**
@@ -101,8 +101,56 @@ Clases principales, métodos representativos y dependencias observadas en el có
 | Presentacion/FormClientes.Designer.cs | FormClientes (partial) | Archivo declarado en la estructura entregada, pero su contenido fue omitido; no es posible documentar su distribución visual. |
 | PizzeriaBellaItalia.csproj | Proyecto .NET | Configura net10.0-windows, Nullable, WinForms y Microsoft.Data.SqlClient 7.1.2; excluye carpetas auxiliares del proceso de compilación. |
 
+> Nota de correspondencia: en los requerimientos se menciona `FormPizzeriaCRUD` como nombre genérico del formulario de operaciones. En esta entrega esa responsabilidad se distribuye en **`FormPedido`** (alta, consulta, actualización y eliminación de pedidos) y **`FormClientes`** (ABM de clientes), ambos documentados en el catálogo anterior.
+
 ## 5. Modelo Entidad-Relación y Estructura SQL Server LocalDB
-Esquema relacional utilizado por los DAO para mantener clientes y pedidos en PizzeriaDB:
+Esquema relacional utilizado por los DAO para mantener clientes y pedidos en PizzeriaDB. Estructura DDL adjunta (`BDpizzeria/scriptsSql/01_Estructura_PizzeriaDB.sql`):
+
+```sql
+CREATE DATABASE PizzeriaDB;
+GO
+
+USE PizzeriaDB;
+GO
+
+CREATE TABLE dbo.Clientes (
+    IdCliente INT IDENTITY(1,1) NOT NULL,
+    Cliente NVARCHAR(100) NOT NULL,
+    Telefono NVARCHAR(30) NOT NULL,
+    CONSTRAINT PK_Clientes PRIMARY KEY CLUSTERED (IdCliente ASC),
+    CONSTRAINT UQ_Clientes_Cliente_Telefono UNIQUE NONCLUSTERED (Cliente ASC, Telefono ASC)
+);
+GO
+
+CREATE TABLE dbo.Pedidos (
+    IdPedido INT IDENTITY(1,1) NOT NULL,
+    IdCliente INT NOT NULL,
+    Cliente NVARCHAR(100) NOT NULL,
+    Telefono NVARCHAR(30) NOT NULL,
+    TamanoNombre NVARCHAR(50) NOT NULL,
+    PrecioBaseTamano INT NOT NULL,
+    MasaNombre NVARCHAR(50) NOT NULL,
+    RecargoMasa INT NOT NULL,
+    QuesoExtra BIT NOT NULL,
+    Pepperoni BIT NOT NULL,
+    Champinones BIT NOT NULL,
+    Aceitunas BIT NOT NULL,
+    Tocino BIT NOT NULL,
+    EsDelivery BIT NOT NULL,
+    AplicaConvenioEstudiante BIT NOT NULL,
+    CostoIngredientes INT NOT NULL,
+    SubtotalPizza INT NOT NULL,
+    MontoDescuento INT NOT NULL,
+    CostoDelivery INT NOT NULL,
+    NetoAfecto INT NOT NULL,
+    MontoIva INT NOT NULL,
+    TotalPagar INT NOT NULL,
+    CONSTRAINT PK_Pedidos PRIMARY KEY CLUSTERED (IdPedido ASC),
+    CONSTRAINT FK_Pedidos_Clientes FOREIGN KEY (IdCliente) REFERENCES dbo.Clientes (IdCliente)
+);
+GO
+```
+
 ![Figura](media/image4.png)
 **Figura 5.1: Relación uno a muchos entre dbo.Clientes y dbo.Pedidos mediante IdCliente.**
 **Tabla dbo.Clientes**
@@ -135,7 +183,7 @@ Esquema relacional utilizado por los DAO para mantener clientes y pedidos en Piz
 ## 5. Modelo Entidad-Relación y Estructura SQL Server LocalDB (continuación)
 Campos de importes persistidos en dbo.Pedidos y reglas de integridad referencial:
 
-| Nota sobre los tipos SQL Los nombres de columnas y las relaciones se corroboran con las sentencias SQL de PedidoDAO.cs y ClienteDAO.cs. Los tipos SQL y restricciones detallados en las tablas se alinean con la documentación técnica previa de Pizzería Bella Italia; el script DDL de la versión v4B no fue adjuntado y debe cotejarse antes de considerar este diccionario como definición física definitiva. |
+| Nota sobre los tipos SQL Los nombres, tipos y restricciones se corroboran con el DDL adjunto y con las sentencias SQL de PedidoDAO.cs y ClienteDAO.cs. Los tipos presentes son INT, NVARCHAR y BIT (además de UNIQUE y FK). El esquema entregado no incluye columnas DATETIME: el registro de pedidos no persiste fecha, por lo que no se documenta un campo inexistente. |
 | --- |
 
 **Tabla dbo.Pedidos - importes calculados**
@@ -242,7 +290,7 @@ Operaciones de mantenimiento del catálogo de clientes y catálogo de métodos r
 
 ## 7. Trazabilidad y Registro Incremental de Versiones (Bitácora Git)
 Trazabilidad técnica de los componentes incluidos en el código fuente recibido:
-La carpeta informada para esta entrega es pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional. El inventario siguiente permite relacionar los principales artefactos con sus responsabilidades. No se adjuntó una salida de git log ni identificadores de commits, por lo que no se atribuyen fechas, hashes ni mensajes de commit que no puedan verificarse.
+La carpeta informada para esta entrega es `pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional`. El inventario siguiente permite relacionar los principales artefactos con sus responsabilidades. El repositorio remoto es `https://github.com/sintesisLabEstudio/pizzeriaBellaItalia-BD-DAO`, rama `main`, con el código de esta entrega publicado en el commit `2cfac45` (*Agrega imagenes de la documentacion al repositorio*), precedido por `d96a216` (*Versiona solo Codigo_Funcional*) y `8964188` (merge que conservó el historial remoto).
 
 | Hito / Área | Archivos relacionados | Evidencia funcional |
 | --- | --- | --- |
