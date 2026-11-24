@@ -733,7 +733,7 @@ partial class FormPedido : Form
         Margin = new Padding(3, 2, 3, 2);
         Name = "FormPedido";
         StartPosition = FormStartPosition.CenterScreen;
-        Text = "Sistema de Pedidos - Pizzería Bella Italia (v1.0) Jorge Vera V.";
+        Text = "Sistema de Pedidos - Pizzería Bella Italia (v3.0) Jorge Vera V.";
         Load += FormPedido_Load;
         grpCliente.ResumeLayout(false);
         grpCliente.PerformLayout();

@@ -1,9 +1,7 @@
 using System;
 using System.Windows.Forms;
 using PizzeriaBellaItalia.Presentacion;
-
 namespace PizzeriaBellaItalia;
-
 // Punto de entrada de la aplicación WinForms.
 static class Program
 {

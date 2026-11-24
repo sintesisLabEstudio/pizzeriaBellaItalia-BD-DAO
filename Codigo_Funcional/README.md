@@ -41,11 +41,8 @@ Codigo_Funcional/
 
 ../estudio/                          Documentación numerada (00_INDICE.txt)
 ```
-
 ---
-
 ## 2. Arquitectura y capas
-
 | Capa | Ubicación | Responsabilidad |
 |---|---|---|
 | **Presentación** | `Presentacion/` | Captura eventos, lee controles, coordina la UI y muestra resultados. Nunca arma SQL. |
@@ -53,11 +50,8 @@ Codigo_Funcional/
 | **Entidades** | `Dominio/PedidoPizza.cs`, `Cliente.cs` | Modelos que mapean las columnas de las tablas. |
 | **Datos (DAO)** | `Dominio/PedidoDAO.cs`, `ClienteDAO.cs` | Ejecuta SQL parametrizado (INSERT/SELECT/UPDATE/DELETE). |
 | **Conexión** | `Dominio/ConexionBD.cs` | Provee `SqlConnection` y el utilitario `ProbarConexion()`. |
-
 Flujo: **UI → DAO → ConexionBD → SQL Server (PizzeriaDB)**.
-
 ### Clases y métodos principales
-
 - **`Program`** — `Main()` con `[STAThread]`, `ApplicationConfiguration.Initialize()` y `Application.Run(new FormPedido())`.
 - **`PedidoPizza`** — `IdPedido`, `IdCliente` (FK), datos del cliente, configuración de pizza, 5 flags de ingredientes, flags de entrega/convenio y 7 montos calculados.
 - **`Cliente`** — `IdCliente`, `Nombre`, `Telefono`.
@@ -67,13 +61,9 @@ Flujo: **UI → DAO → ConexionBD → SQL Server (PizzeriaDB)**.
 - **`ConexionBD`** — `CadenaConexion`, `ObtenerConexion()`, `ProbarConexion()`.
 - **`FormPedido`** — `FormPedido_Load`, `CargarPedidos`, `ConstruirPedido`, `Calculo_Changed`, `MostrarResumen`, `vistaPedido`, `LlenaForm`, `LimpiarFormulario`, `MostrarEstado`, `ConfigurarAyuda`, `CargarClienteDesdeSeleccion` y los manejadores de los botones.
 - **`FormClientes`** — `FormClientes_Load`, `CargarClientes`, `PrepararNuevoCliente`, `presentaCamposParaEdicion`, `btnGrabar_Click`, `btnElimina_Click`, `btnBuscar_Click`, `btnSelecciona_Click`, `btnNuevo_Click`, `btnListar_Click`.
-
 ---
-
 ## 3. Reglas de negocio
-
 Implementadas en `CalculadoraPedido.Calcular()` y reutilizadas por el recálculo en vivo de la UI.
-
 | Concepto | Regla |
 |---|---|
 | Tamaños | Personal 5.000 · Mediana 8.500 · Familiar 12.000 (CLP) |
@@ -83,41 +73,28 @@ Implementadas en `CalculadoraPedido.Calcular()` y reutilizadas por el recálculo
 | Delivery | +2.000 CLP |
 | IVA | 19 % sobre `(subtotal − descuento + delivery)` |
 | Total | `neto + IVA` |
-
 Los montos se guardan como `int` (CLP sin decimales) con truncamiento por conversión.
-
 ---
-
 ## 4. Base de datos
-
 - **Servidor**: `(localdb)\MSSQLLocalDB`
 - **Base**: `PizzeriaDB`
 - **Cadena** (en `Dominio/ConexionBD.cs`):
-
 ```
 Server=(localdb)\MSSQLLocalDB;Database=PizzeriaDB;Integrated Security=True;TrustServerCertificate=True;
 ```
-
 ### Tablas
-
 - **`dbo.Clientes`** — `IdCliente` (PK IDENTITY), `Cliente` (NVARCHAR(100)), `Telefono` (NVARCHAR(30)) y la restricción **`UQ_Clientes_Cliente_Telefono`** (UNIQUE).
 - **`dbo.Pedidos`** — `IdPedido` (PK IDENTITY), `IdCliente` (FK → Clientes, `ON UPDATE CASCADE` / `ON DELETE NO ACTION`), datos del cliente, configuración de pizza, 5 flags de ingredientes, `EsDelivery`, `AplicaConvenioEstudiante`, 7 montos calculados y `FechaCreacion` (DEFAULT `GETDATE()`).
 - **Índices**: `IX_Pedidos_Cliente`, `IX_Pedidos_IdCliente`, `IX_Pedidos_FechaCreacion`.
-
 ### Decisiones de persistencia
-
 - Todas las consultas son **parametrizadas** (`AddWithValue`) → sin inyección SQL.
 - `ResolverIdCliente()` reutiliza el cliente por `(nombre, teléfono)` o lo crea; el DAO detecta `SqlException` 2601/2627 y la UI muestra «Cliente duplicado».
 - `InsertarPedido` y `ActualizarPedido` usan **transacciones** y `SCOPE_IDENTITY()` para recuperar el `IdPedido`.
 - Los listados usan `SqlDataAdapter`/`DataTable` (modelo desconectado); el detalle por ID usa `SqlDataReader`.
 - La app se conecta por **nombre de base de datos**, no por ruta de archivo: mover la carpeta no rompe la conexión.
-
 ---
-
 ## 5. Funcionalidades de la interfaz
-
 ### FormPedido (pantalla principal)
-
 - **Grilla**: al cargar se listan los pedidos; se ocultan `IdPedido` e `IdCliente` y se muestran `Cliente`, `Teléfono`, `Tamaño` y `Total a Pagar`.
 - **Calcular/Grabar** (`btnCalcular`): valida cliente, calcula, muestra el desglose en «Detalle de Pago» y, tras confirmar, inserta el pedido.
 - **Recálculo en vivo** (`Calculo_Changed`): al cambiar tamaño, masa, ingredientes, entrega o convenio, actualiza los montos (usa las mismas reglas que el grábado).
@@ -128,20 +105,14 @@ Server=(localdb)\MSSQLLocalDB;Database=PizzeriaDB;Integrated Security=True;Trust
 - **Probar conexión** (`btnProbarConexion`): muestra la cadena y el estado.
 - **Clientes** (`btnEditaClientes`): abre `FormClientes` en modal.
 - **Nuevo Pedido / Salir**, ayuda al pasar el mouse por los botones y barra de estado (`lblAyuda`).
-
 ### FormClientes (ABM de clientes)
-
 - Alta, edición (doble clic en la fila), búsqueda por nombre o teléfono y listado.
 - **Validación de duplicados** por `(nombre, teléfono)` antes de grabar y por excepción SQL como respaldo.
 - **Borrado protegido**: no elimina clientes que tengan pedidos asociados (`validaClienteSinPedidos`).
 - **Seleccionar** (`btnSelecciona`): inyecta el cliente elegido en `FormPedido` mediante `CargarClienteDesdeSeleccion`.
-
 ---
-
 ## 6. Comandos de base de datos
-
 Ubicados en `BDpizzeria/comandos/`, separados en `BAT/` (ejecutables) y `SQL/` (scripts invocados), con numeración coincidente.
-
 | # | Comando | Acción |
 |---|---|---|
 | 01 | `creaBaseDatosP-01.bat` | Crea la BD y las tablas; aplica la migración de clientes |
@@ -152,31 +123,22 @@ Ubicados en `BDpizzeria/comandos/`, separados en `BAT/` (ejecutables) y `SQL/` (
 | — | `respaldo/verRegistrosTablas.bat` | Muestra tablas y registros de las copias de `respaldo/` |
 | 06 | `vaciaBaseDatos-06.bat` | Borra pedidos y clientes y reinicia los IDENTITY |
 | 07 | `desconectaBase-07.bat` | Solo desadjunta la BD (no borra archivos) |
-
 **Portabilidad:** no hay rutas absolutas. Cada `.bat` resuelve la ruta de los datos dos niveles por encima de `BAT/`, busca `sqlcmd` en el PATH y en ODBC 140–180, y crea/inicia LocalDB si hace falta. Funcionan aunque se mueva el proyecto. Ver `BDpizzeria/comandos/README.txt`.
-
 ---
-
 ## 7. Requisitos y puesta en marcha
-
 **Requisitos**
 - Windows con .NET 10 SDK y carga de trabajo *Desarrollo de escritorio .NET* (Windows Forms).
 - Visual Studio 2022 reciente (o abrir directamente el `.csproj`; el `.slnx` puede no ser soportado por versiones antiguas).
 - SQL Server LocalDB (`(localdb)\MSSQLLocalDB`).
 - Paquete NuGet `Microsoft.Data.SqlClient` 7.1.2 (se restaura automáticamente).
-
 **Pasos**
 1. Abrir `PizzeriaBellaItalia.slnx` o `PizzeriaBellaItalia.csproj`.
 2. Restaurar paquetes NuGet y compilar (`Ctrl+Shift+B`). Resultado esperado: **0 errores / 0 advertencias**.
 3. En una CMD, entrar a `BDpizzeria\comandos\BAT` y ejecutar `cargaBaseDatos-02.bat`.
 4. Ejecutar la aplicación (`F5` / `Ctrl+F5`).
-
 Para verificar el entorno: `verEstadoConexion-03.bat` debe imprimir `RESULTADO: TODO OK`.
-
 ---
-
 ## 8. Notas
-
 - El total mostrado y persistido corresponde a `PedidoPizza.TotalPagar`.
 - `System.Data.SqlClient` aparece comentado en el `.csproj`; el acceso real usa `Microsoft.Data.SqlClient`.
 - El `.csproj` conserva exclusiones heredadas (`FuentesYbase\**`, `ejecutablePortable\**`, `BDpizzeria\pruebaDao\**`) de versiones anteriores; no afectan la compilación.

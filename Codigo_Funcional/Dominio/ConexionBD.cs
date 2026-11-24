@@ -1,30 +1,52 @@
-using System;
+﻿using System;
+using System.Data;
 using Microsoft.Data.SqlClient;
-
 namespace PizzeriaBellaItalia.Dominio
 {
-    // Centraliza la conexión a SQL Server (LocalDB/PizzeriaDB).
+    // Helper estático: única clase que conoce la cadena de conexión.
+    // Solo los DAO la usan; la capa de presentación nunca abre conexiones.
     public static class ConexionBD
     {
-        // Cadena de conexión: servidor, BD, autenticación Windows y confianza de certificado local.
+        //RUTA RELATIVA
+        //private static readonly string rutaBaseDatos = Path.GetFullPath(
+        //    Path.Combine(AppContext.BaseDirectory, @"..\..\..\..\Codigo_Funcional\BDpizzeria\pizzeriaDB.mdf")
+        //);
+
+        //RUTA ABSOLUTA
+        //private static readonly string rutaBaseDatos = @"C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4\Codigo_Funcional\BDpizzeria\pizzeriaDB.mdf";
+
+        //CADENA DE CONEXION final resultante EN BASE A LA RUTA DE LA BASE DE DATOS
+        //private static readonly string cadenaConexion =
+        //    $@"Server=(localdb)\MSSQLLocalDB;AttachDbFilename={rutaBaseDatos};Database=PizzeriaDB;Integrated Security=True;TrustServerCertificate=True;";
+        //-------------------------------------------------------------------
+        // LocalDB por nombre de base de datos (sin ruta de archivo).
+        // La base PizzeriaDB debe existir en la instancia: se crea con 01_creaBaseDatosP-01.bat
+        // y, si fue desadjuntada, se vuelve a adjuntar con 02_cargaBaseDatos-02.bat.
         private static readonly string cadenaConexion =
             @"Server=(localdb)\MSSQLLocalDB;Database=PizzeriaDB;Integrated Security=True;TrustServerCertificate=True;";
-        // Expone la cadena para mostrar detalles en la UI.
         public static string CadenaConexion => cadenaConexion;
-        // Crea y abre una conexión; el llamador debe cerrarla (usar "using").
+        // Abre y devuelve una conexión nueva. Quien la recibe debe liberarla con "using".
         public static SqlConnection ObtenerConexion()
         {
             SqlConnection conexion = new SqlConnection(cadenaConexion);
-            conexion.Open();    // Abre la conexión; si falla, lanza SqlException.
-            return conexion;    // El llamador debe cerrar la conexión.
+            try
+            {
+                conexion.Open();
+                return conexion;
+            }
+            catch
+            {
+                conexion.Dispose(); // Si no abre, no queda una conexión sin liberar.
+                throw;
+            }
         }
-        // Prueba la conexión: true si abre correctamente, false ante error SQL.
+        // Verifica que la base PizzeriaDB abra correctamente.
         public static bool ProbarConexion()
         {
             try
             {
                 using (SqlConnection conexion = ObtenerConexion())
-                    return conexion.State == System.Data.ConnectionState.Open;
+                    return conexion.State == ConnectionState.Open;
             }
             catch (SqlException ex)
             {

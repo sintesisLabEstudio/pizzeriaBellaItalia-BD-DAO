@@ -74,7 +74,7 @@
             // 
             // btnListar
             // 
-            btnListar.Location = new Point(261, 97);
+            btnListar.Location = new Point(276, 99);
             btnListar.Name = "btnListar";
             btnListar.Size = new Size(75, 23);
             btnListar.TabIndex = 10;
@@ -84,7 +84,7 @@
             // 
             // btnSelecciona
             // 
-            btnSelecciona.Location = new Point(195, 62);
+            btnSelecciona.Location = new Point(193, 70);
             btnSelecciona.Name = "btnSelecciona";
             btnSelecciona.Size = new Size(158, 23);
             btnSelecciona.TabIndex = 9;
@@ -94,7 +94,7 @@
             // 
             // btnNuevo
             // 
-            btnNuevo.Location = new Point(261, 137);
+            btnNuevo.Location = new Point(276, 137);
             btnNuevo.Name = "btnNuevo";
             btnNuevo.Size = new Size(75, 23);
             btnNuevo.TabIndex = 8;
@@ -119,7 +119,7 @@
             btnElimina.Size = new Size(75, 23);
             btnElimina.TabIndex = 6;
             btnElimina.Text = "Eliminar";
-            btnElimina.TextAlign = ContentAlignment.MiddleRight;
+            btnElimina.TextAlign = ContentAlignment.TopCenter;
             btnElimina.UseVisualStyleBackColor = true;
             btnElimina.Click += btnElimina_Click;
             // 
@@ -136,7 +136,7 @@
             // 
             txtTelefono.Location = new Point(20, 98);
             txtTelefono.Name = "txtTelefono";
-            txtTelefono.Size = new Size(167, 23);
+            txtTelefono.Size = new Size(191, 23);
             txtTelefono.TabIndex = 3;
             // 
             // txtNombre
@@ -183,7 +183,7 @@
 
         #endregion
 
-        private DataGridView dgvClientes; // <-- AQUÍ ESTABA EL ERROR (antes decía dataGridView1)
+        private DataGridView dgvClientes;
         private GroupBox grpCliente;
         private Button btnGrabar;
         private TextBox txtTelefono;
