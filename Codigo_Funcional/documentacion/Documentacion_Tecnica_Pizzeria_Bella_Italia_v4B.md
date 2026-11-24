@@ -316,6 +316,7 @@ La carpeta informada para esta entrega es `pizzeriaBellaItalia-BD-DAO-v4B\Codigo
 | Servidor | (localdb)\MSSQLLocalDB |
 | Base de datos | PizzeriaDB |
 | Cadena configurada | Server=(localdb)\MSSQLLocalDB;Database=PizzeriaDB;Integrated Security=True;TrustServerCertificate=True; |
+| Alternativa de despliegue | Instancia nombrada `Server=.\SQLEXPRESS;Database=PizzeriaDB;Integrated Security=True;TrustServerCertificate=True;` (dejada como comentario en `ConexionBD.cs`). No requiere cambios en los DAO; solo se sustituye la cadena activa. |
 | Carpetas excluidas | BDpizzeria\pruebaDao, FuentesYbase y ejecutablePortable (Compile / None / EmbeddedResource) |
 
 **Aspectos de implementación que deben conservarse**

@@ -9,8 +9,7 @@ namespace PizzeriaBellaItalia.Dominio
     {
         //RUTA RELATIVA
         //private static readonly string rutaBaseDatos = Path.GetFullPath(
-        //    Path.Combine(AppContext.BaseDirectory, @"..\..\..\..\Codigo_Funcional\BDpizzeria\pizzeriaDB.mdf")
-        //);
+        //    Path.Combine(AppContext.BaseDirectory, @"..\..\..\..\Codigo_Funcional\BDpizzeria\pizzeriaDB.mdf"));
 
         //RUTA ABSOLUTA
         //private static readonly string rutaBaseDatos = @"C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4\Codigo_Funcional\BDpizzeria\pizzeriaDB.mdf";
@@ -18,12 +17,15 @@ namespace PizzeriaBellaItalia.Dominio
         //CADENA DE CONEXION final resultante EN BASE A LA RUTA DE LA BASE DE DATOS
         //private static readonly string cadenaConexion =
         //    $@"Server=(localdb)\MSSQLLocalDB;AttachDbFilename={rutaBaseDatos};Database=PizzeriaDB;Integrated Security=True;TrustServerCertificate=True;";
-        //-------------------------------------------------------------------
+        
+        // ALTERNATIVA con la instancia nombrada de SQL Server Express (servicio .\SQLEXPRESS):
+        //private static readonly string cadenaConexion =
+        //    @"Server=.\SQLEXPRESS;Database=PizzeriaDB;Integrated Security=True;TrustServerCertificate=True;";
+        
         // LocalDB por nombre de base de datos (sin ruta de archivo).
-        // La base PizzeriaDB debe existir en la instancia: se crea con 01_creaBaseDatosP-01.bat
-        // y, si fue desadjuntada, se vuelve a adjuntar con 02_cargaBaseDatos-02.bat.
         private static readonly string cadenaConexion =
             @"Server=(localdb)\MSSQLLocalDB;Database=PizzeriaDB;Integrated Security=True;TrustServerCertificate=True;";
+        
         public static string CadenaConexion => cadenaConexion;
         // Abre y devuelve una conexión nueva. Quien la recibe debe liberarla con "using".
         public static SqlConnection ObtenerConexion()
