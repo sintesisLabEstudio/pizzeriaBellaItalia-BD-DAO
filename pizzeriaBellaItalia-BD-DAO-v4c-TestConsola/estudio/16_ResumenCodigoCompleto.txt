@@ -1,0 +1,243 @@
+===============================================================================
+RESUMEN DEL CODIGO COMPLETO - PIZZERIA BELLA ITALIA (v4: ADO.NET + DAO)
+===============================================================================
+Actualizado: 2026-11-23
+Fuente analizada: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional
+Este archivo reemplaza conceptualmente a 07_ResumenCodigo.txt, que estaba desactualizado:
+mencionaba el metodo testInsertarCliente (ya no existe) y omite detalles de transacciones.
+-------------------------------------------------------------------------------
+1. CONFIGURACION DEL PROYECTO
+-------------------------------------------------------------------------------
+PizzeriaBellaItalia.csproj
+  OutputType        : WinExe
+  TargetFramework   : net10.0-windows
+  UseWindowsForms   : true
+  Nullable          : enable
+  ImplicitUsings    : enable
+  Paquete NuGet     : Microsoft.Data.SqlClient 7.1.2
+  Exclusiones       : BDpizzeria\pruebaDao\**, FuentesYbase\**, ejecutablePortable\**
+  Solucion          : PizzeriaBellaItalia.slnx
+Program.cs
+  [STAThread] Main()
+    -> ApplicationConfiguration.Initialize()
+    -> Application.Run(new FormPedido())      (formulario principal)
+Cadena de conexion (Dominio\ConexionBD.cs)
+  Server=(localdb)\MSSQLLocalDB;Database=PizzeriaDB;
+  Integrated Security=True;TrustServerCertificate=True;
+-------------------------------------------------------------------------------
+2. INVENTARIO DE ARCHIVOS FUENTE
+-------------------------------------------------------------------------------
+Codigo_Funcional\
+  Program.cs                          Punto de entrada WinForms
+  PizzeriaBellaItalia.csproj          Configuracion de compilacion
+  Dominio\
+    PedidoPizza.cs                    Entidad de pedido (mapea dbo.Pedidos)
+    Cliente.cs                        Entidad de cliente (mapea dbo.Clientes)
+    CalculadoraPedido.cs              Reglas de negocio y calculo de montos
+    ConexionBD.cs                     Helper estatico de conexion
+    PedidoDAO.cs                      DAO de dbo.Pedidos
+    ClienteDAO.cs                     DAO de dbo.Clientes
+  Presentacion\
+    FormPedido.cs                     Logica de la pantalla principal
+    FormPedido.Designer.cs            Diseno y cableado de eventos
+    FormClientes.cs                   Logica del ABM de clientes
+    FormClientes.Designer.cs          Diseno y cableado de eventos
+  BDpizzeria\
+    pizzeriaDB.mdf / .ldf             Base de datos en vivo
+    cfg.txt                           Cadena de conexion y notas
+    scriptsSql\01_Estructura...sql    CREATE DATABASE + 2 tablas + FK + UQ
+    scriptsSql\02_DatosDemo...sql     Datos de ejemplo
+    comandos\BAT\ ...                 7 .bat y 3 .sql de operacion
+    comandos\01..07_*.bat             Copias de los .bat en la raiz de comandos
+    respaldo\                         Copias .mdf/.ldf + visor verRegistrosTablas
+-------------------------------------------------------------------------------
+3. CAPA DE DOMINIO (Dominio/)
+-------------------------------------------------------------------------------
+PedidoPizza.cs  (22 propiedades, mapeo directo a dbo.Pedidos)
+  IdPedido (PK), IdCliente (FK), Cliente, Telefono,
+  TamanoNombre, PrecioBaseTamano, MasaNombre, RecargoMasa,
+  QuesoExtra, Pepperoni, Champinones, Aceitunas, Tocino,
+  EsDelivery, AplicaConvenioEstudiante,
+  CostoIngredientes, SubtotalPizza, MontoDescuento, CostoDelivery,
+  NetoAfecto, MontoIva, TotalPagar.
+Cliente.cs
+  IdCliente (PK), Nombre, Telefono.
+CalculadoraPedido.cs  (clase static, sin dependencia de WinForms)
+  Tamanos : Personal 5000 / Mediana 8500 (defecto) / Familiar 12000
+  Masas   : Tradicional 0 (defecto) / Delgada 0 / Borde de Queso 1500
+  DatosPedido: clase anidada con los valores de entrada de la interfaz.
+  Calcular(DatosPedido) -> PedidoPizza:
+    tamano y masa se normalizan al valor por defecto si no existen en el diccionario
+    extras    = 800 * cantidad de ingredientes activos
+    subtotal  = precioBase + recargoMasa + extras
+    descuento = 10% del subtotal si AplicaConvenioEstudiante
+    delivery  = 2000 si EsDelivery
+    neto      = subtotal - descuento + delivery
+    iva       = 19% del neto
+    total     = neto + iva
+ConexionBD.cs  (helper estatico)
+  CadenaConexion  : propiedad de solo lectura con la cadena indicada arriba.
+  ObtenerConexion(): crea, abre y devuelve SqlConnection; si falla, hace Dispose y relanza.
+  ProbarConexion(): bool; captura SqlException y la escribe en consola.
+-------------------------------------------------------------------------------
+4. CAPA DE ACCESO A DATOS (ADO.NET / DAO)
+-------------------------------------------------------------------------------
+PedidoDAO.cs  (6 metodos publicos + 3 privados)
+  InsertarPedido(PedidoPizza) : bool
+      BEGIN TRANSACTION -> ResolverIdCliente -> INSERT con 21 parametros
+      -> SCOPE_IDENTITY -> COMMIT; si falla, ROLLBACK tolerante.
+  ObtenerPedidosDataTable() : DataTable
+      SELECT con INNER JOIN Clientes, ORDER BY IdPedido DESC.
+  BuscarPedidosPorCliente(string) : DataTable
+      WHERE c.Cliente LIKE '%' + filtro + '%'.
+  ObtenerPedidoPorId(int) : PedidoPizza?
+      SELECT completo con JOIN; devuelve null si no existe.
+  ActualizarPedido(PedidoPizza) : bool
+      ResolverIdCliente + UPDATE por IdPedido, todo en una transaccion.
+  EliminarPedido(int) : bool
+      DELETE por IdPedido.
+  Privados: ResolverIdCliente (delega en ClienteDAO), Revertir (rollback seguro),
+            CargarParametros (carga los 21 parametros del INSERT/UPDATE).
+ClienteDAO.cs  (12 metodos publicos)
+  EsClienteDuplicado(SqlException) : bool estatico -> ex.Number 2601 o 2627.
+  ObtenerClientesDataTable() : DataTable -> ORDER BY IdCliente DESC.
+  BuscarPorNombreYTelefono(n, t) : Cliente? -> control de duplicados en la UI.
+  InsertarCliente(Cliente) : int -> INSERT + SCOPE_IDENTITY.
+  InsertarClienteConTransaccion(c, conexion, tran) : int -> reutiliza la transaccion del llamador.
+  ObtenerOCrearIdCliente(n, t, conexion, tran) : int -> busca o crea en la misma transaccion.
+  ActualizarCliente(Cliente) : bool -> transaccion que actualiza Clientes y la copia
+      de nombre/telefono guardada en Pedidos, para evitar datos divergentes.
+  EliminarCliente(int) : bool -> DELETE por IdCliente.
+  ValidaClienteSinPedidos(int) : bool -> COUNT(*) en Pedidos antes de borrar.
+  BuscarClientesDataTable(criterio) : DataTable -> LIKE en Cliente o Telefono.
+  ObtenerPedidosPorCliente(int) : DataTable -> utilitario de consulta.
+  ObtenerClientePorId(int) : Cliente? -> utilitario de consulta.
+Notas de diseno del DAO:
+  - Todas las consultas son parametrizadas (AddWithValue), sin concatenacion SQL.
+  - Las operaciones que pueden dejar datos a medias usan SqlTransaction.
+  - El rollback se hace en un helper que tolera transacciones ya finalizadas.
+-------------------------------------------------------------------------------
+5. CAPA DE PRESENTACION (Presentacion/)
+-------------------------------------------------------------------------------
+FormPedido.cs  (pantalla principal; partial con FormPedido.Designer.cs)
+  Atributos: pedidoDao (PedidoDAO), cargandoFormulario (evita recalculos).
+  FormPedido_Load       : carga cboTamano y cboMasa desde CalculadoraPedido,
+                          selecciona "Mediana" y "Masa Tradicional", deshabilita
+                          grpResumen, configura ayuda y lista pedidos.
+  ConstruirPedido()     : arma CalculadoraPedido.DatosPedido desde los controles
+                          y delega el calculo a la regla de negocio.
+  Calculo_Changed       : recalcula en vivo al cambiar combos, checks y radios;
+                          se omite si cargandoFormulario o grpResumen deshabilitado.
+  BtnCalcular_Click     : valida cliente y telefono, calcula, muestra el detalle y
+                          graba tras confirmacion; traduce SqlException de duplicado.
+  MostrarResumen        : escribe subtotal, descuento, delivery, IVA y total en grpResumen.
+  btnActualizarPedido   : valida ID, construye pedido y llama a ActualizarPedido.
+  btnEliminarPedido     : valida ID, pide confirmacion y elimina.
+  btnBuscaPedidosXCliente : filtra por nombre (con filtro vacio muestra validacion).
+  btnBuscarPedidoPorId  : valida ID con int.TryParse, busca, muestra 1 fila y carga detalle.
+  btnTodosLosPedidos    : recarga el listado completo.
+  dgvPedidos_CellClick  : toma IdPedido de la fila y llama a VistaPedido.
+  VistaPedido / LlenaForm : carga todos los campos y montos de un pedido.
+  btnProbarConexion     : muestra cadena y estado con ConexionBD.ProbarConexion().
+  btnEditaClientes      : abre FormClientes con ShowDialog (modal).
+  CargarClienteDesdeSeleccion(n, t) : recibe el cliente elegido en FormClientes.
+  BtnLimpiar_Click      : LimpiarFormulario (nuevo pedido).
+  BtnSalir_Click        : cierra tras confirmacion.
+  MostrarEstado / ConfigurarAyuda : lblAyuda con color y tooltips al hover de botones.
+  ConfigurarColumnasGrilla : oculta IdPedido e IdCliente, rotula las columnas visibles.
+------------
+  Controles cableados en FormPedido.Designer.cs:
+    cboTamano, cboMasa                         -> SelectedIndexChanged -> Calculo_Changed
+    chkQuesoExtra, chkPepperoni, chkChampinones,
+    chkAceitunas, chkTocino, chkConvenioEstudiante -> CheckedChanged -> Calculo_Changed
+    rdbDelivery, rdbRetiro                     -> CheckedChanged -> Calculo_Changed
+    btnCalcular, btnLimpiar, btnActualizarPedido, btnEliminarPedido,
+    btnBuscaPedidosXCliente, btnBuscarPedidoPorId, btnTodosLosPedidos,
+    btnEditaClientes, btnProbarConexion, btnConfirmar -> Click
+    dgvPedidos                                 -> CellClick
+    FormPedido                                 -> Load
+-------------
+FormClientes.cs  (ABM de clientes; partial con FormClientes.Designer.cs)
+  Constructor       : suscribe btnGrabar.Click y dgvClientes.CellDoubleClick
+                       (los demas eventos se cablean en el Designer).
+  FormClientes_Load : CargarClientes + PrepararNuevoCliente.
+  btnGrabar_Click   : valida nombre y telefono, detecta duplicados por (Nombre, Telefono)
+                       antes de grabar y tambien por SqlException 2601/2627;
+                       inserta si idClienteSeleccionado = 0, si no actualiza.
+  btnElimina_Click  : bloquea la baja si el cliente tiene pedidos
+                       (ValidaClienteSinPedidos), luego pide confirmacion.
+  btnBuscar_Click   : filtra por nombre o telefono con LIKE.
+  btnListar_Click   : recarga todos los clientes.
+  btnNuevo_Click    : limpia campos y vuelve al modo alta.
+  btnSelecciona_Click : envia nombre y telefono a FormPedido mediante
+                       CargarClienteDesdeSeleccion y cierra/oculta esta ventana.
+  CargarClientes    : enlaza el DataTable al DataGridView; configura seleccion de fila,
+                       sola lectura y titulos de columnas.
+  PresentaCamposParaEdicion / dgvClientes_CellDoubleClick : modo actualizacion.
+  PrepararNuevoCliente : limpia campos, idClienteSeleccionado = 0, boton "Grabar".
+-------------------------------------------------------------------------------
+6. BASE DE DATOS Y SCRIPTS (BDpizzeria/)
+-------------------------------------------------------------------------------
+Modelo: dbo.Clientes (1) ---- (N) dbo.Pedidos
+  PK Clientes   : IdCliente INT IDENTITY(1,1)
+  UQ Clientes   : UQ_Clientes_Cliente_Telefono (UNIQUE en Cliente + Telefono)
+  PK Pedidos    : IdPedido INT IDENTITY(1,1)
+  FK Pedidos    : IdCliente -> dbo.Clientes.IdCliente
+
+  dbo.Clientes : IdCliente, Cliente NVARCHAR(100), Telefono NVARCHAR(30)
+  dbo.Pedidos  : 22 columnas (IdPedido, IdCliente y los datos/configuracion/montos
+                 del pedido; todos NOT NULL, los flags de tipo BIT).
+-----------
+Scripts SQL (scriptsSql\)
+  01_Estructura_PizzeriaDB.sql : CREATE DATABASE, CREATE TABLE, PK, FK y UQ.
+  02_DatosDemo_PizzeriaDB.sql  : carga de datos de ejemplo.
+-----------
+Comandos operativos (comandos\ y comandos\BAT\)
+  01_creaBaseDatosP-01.bat       crea la base y aplica la estructura
+  02_cargaBaseDatos-02.bat       adjunta la BD y la deja en MULTI_USER
+  03_verEstadoConexion-03.bat    diagnostico de LocalDB, BD, modo y filas
+  04_verTablas-04.bat            muestra tablas, estructura y datos
+  05_respaldarBaseDatos-05.bat   copia .mdf/.ldf a respaldo\
+  06_vaciaBaseDatos-06.bat       DELETE + DBCC CHECKIDENT RESEED
+  07_desconectaBase-07.bat       sp_detach_db (conserva los archivos)
+  reconectaBD.bat                reattachea la base
+  respaldo\verRegistrosTablas.bat visor de la copia de seguridad
+-------------------------------------------------------------------------------
+7. FLUJOS PRINCIPALES
+-------------------------------------------------------------------------------
+Alta de pedido:
+  Usuario completa cliente y opciones -> Calculo_Changed actualiza montos ->
+  BtnCalcular_Click valida y confirma -> PedidoDAO.InsertarPedido abre transaccion ->
+  ClienteDAO.ObtenerOCrearIdCliente reutiliza o crea cliente ->
+  INSERT en Pedidos con SCOPE_IDENTITY -> COMMIT -> se limpia el formulario y se recarga la grilla.
+Actualizacion de pedido:
+  El usuario selecciona una fila o busca por ID -> VistaPedido carga el detalle ->
+  cambia datos -> btnActualizarPedido valida -> PedidoDAO.ActualizarPedido
+  resuelve el cliente (puede crear uno nuevo) y hace UPDATE en la misma transaccion.
+Baja de cliente:
+  FormClientes verifica ValidaClienteSinPedidos -> si tiene pedidos, se deniega ->
+  si no, confirma y ejecuta DELETE.
+Seleccion de cliente desde el ABM:
+  FormClientes.btnSelecciona -> FormPedido.CargarClienteDesdeSeleccion ->
+  se cargan txtCliente y txtTelefono en el pedido.
+-------------------------------------------------------------------------------
+8. VALIDACION Y MANEJO DE ERRORES
+-------------------------------------------------------------------------------
+- Validaciones de interfaz: nombre y telefono obligatorios; ID positivo con int.TryParse;
+  confirmacion para grabar, actualizar, eliminar y salir.
+- Duplicados: control previo por (Nombre, Telefono) y captura de SqlException 2601/2627
+  traducida a MessageBox comprensible.
+- Integridad: no se puede borrar un cliente con pedidos; FK y UQ en la base.
+- Excepciones: cada metodo de la capa de presentacion muestra MessageBox y escribe
+  estado en lblAyuda; los DAO relanzan despues de hacer rollback.
+-------------------------------------------------------------------------------
+9. ARCHIVOS DE DOCUMENTACION EN ESTA CARPETA (estudio\)
+-------------------------------------------------------------------------------
+  00_INDICE.txt ... 15_INSTRUCCIONES_COMPILACION.txt  material de apoyo inicial
+  Documentacion_Tecnica_CineStar_...pdf               plantilla de referencia
+  documentacion_Tecnica_Pizzeria.txt / .doc / .pdf    documentacion tecnica clara
+  documentacion_Tecnica_Pizzeria_dark.pdf             misma documentacion, tema oscuro
+  16_ResumenCodigoCompleto.txt                        este archivo
+===============================================================================
+FIN DEL RESUMEN
+===============================================================================

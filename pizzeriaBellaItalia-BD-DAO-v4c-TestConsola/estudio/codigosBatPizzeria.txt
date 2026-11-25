@@ -1,0 +1,562 @@
+CODIGOS BAT - PIZZERIA BELLA ITALIA
+Raiz analizada: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B
+Se encontraron 17 archivos .bat en todas las carpetas del proyecto.
+Convenciones: ARCHIVO, RUTA, DESCRIPCION, CODIGO (literal indentado) y PASO A PASO (explicacion didactica).
+    GLOSARIO RAPIDO DE COMANDOS
+        @echo off        oculta el eco de los comandos para que solo se vean los mensajes.
+        setlocal/endlocal aísla las variables para que no afecten otras ventanas.
+        set VAR=valor    define una variable; se usa como %VAR%.
+        %~dp0            carpeta donde esta el .bat (barra final incluida).
+        sqlcmd           utilidad de linea de comandos para SQL Server.
+        -S               servidor; aqui siempre (localdb)\MSSQLLocalDB.
+        -d               base de datos sobre la que se ejecuta la consulta.
+        -Q "sql"         ejecuta una consulta escrita en la propia linea.
+        -i "archivo.sql" ejecuta un archivo de script SQL.
+        -b               hace que sqlcmd devuelva error si la instruccion falla.
+        %ERRORLEVEL%     codigo de salida del ultimo comando: 0 = exito.
+        if errorlevel 1 equivale a "si el ultimo comando fallo".
+        goto :etiqueta   salta a una linea marcada con :etiqueta.
+        choice /c SN     pregunta Si/No; errorlevel 1 = S, 2 = N.
+        pause            espera a que el usuario presione una tecla.
+        TRUNCATE         borra todas las filas y reinicia los contadores IDENTITY.
+--------------- ARCHIVO: 01_creaBaseDatosP-01.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\BAT\01_creaBaseDatosP-01.bat
+DESCRIPCION: Crea la base PizzeriaDB y sus dos tablas ejecutando el script SQL 01_Estructura_PizzeriaDB.sql. Version robusta.
+CODIGO:
+    @echo off
+    setlocal EnableExtensions
+    set "BASE_DIR=%~dp0"
+    set "SQL_FILE=%BASE_DIR%01_Estructura_PizzeriaDB.sql"
+    where sqlcmd >nul 2>&1
+    if errorlevel 1 (
+        echo ERROR: no se encontro sqlcmd en el PATH.
+        echo Instale SQL Server Command Line Utilities y vuelva a intentar.
+        goto :fin
+    )
+    if not exist "%SQL_FILE%" (
+        echo ERROR: no se encontro el archivo 01_Estructura_PizzeriaDB.sql junto a este .bat.
+        goto :fin
+    )
+    echo Creando la base PizzeriaDB y sus tablas si no existen...
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -b -i "%SQL_FILE%"
+    if errorlevel 1 (
+        echo Error al crear la base o las tablas.
+    ) else (
+        echo Base y tablas listas.
+    )
+    :fin
+    endlocal
+    pause
+PASO A PASO:
+    1. @echo off y setlocal EnableExtensions: ocultan el eco de comandos y activan extensiones de la consola.
+    2. set BASE_DIR=%~dp0: guarda en una variable la carpeta donde esta este .bat (%~dp0 = unidad y ruta del archivo).
+    3. set SQL_FILE=%BASE_DIR%01_Estructura_PizzeriaDB.sql: compone la ruta completa del script SQL que lo acompana.
+    4. where sqlcmd: comprueba que la herramienta de linea de comandos de SQL Server este en el PATH; si no, avisa y salta a :fin.
+    5. if not exist "%SQL_FILE%": verifica que el archivo SQL exista junto al .bat; si falta, avisa y termina.
+    6. sqlcmd -S "(localdb)\MSSQLLocalDB" -b -i "%SQL_FILE%": ejecuta el script contra LocalDB. -b hace que sqlcmd devuelva error si la instruccion falla.
+    7. if errorlevel 1 ... else ...: informa si la base y las tablas quedaron listas o si hubo error.
+    8. :fin, endlocal y pause: etiqueta de salida comun, restaura el entorno y espera a que el usuario presione una tecla.
+------------- ARCHIVO: 02_cargaBaseDatos-02.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\BAT\02_cargaBaseDatos-02.bat
+DESCRIPCION: Adjunta PizzeriaDB si hace falta y la deja en modo MULTI_USER mediante el script 02_cargaBaseDatos.sql. Version robusta.
+CODIGO:
+    @echo off
+    setlocal EnableExtensions
+    set "BASE_DIR=%~dp0"
+    set "SQL_FILE=%BASE_DIR%02_cargaBaseDatos.sql"
+    where sqlcmd >nul 2>&1
+    if errorlevel 1 (
+        echo ERROR: no se encontro sqlcmd en el PATH.
+        echo Instale SQL Server Command Line Utilities y vuelva a intentar.
+        goto :fin
+    )
+    if not exist "%SQL_FILE%" (
+        echo ERROR: no se encontro el archivo 02_cargaBaseDatos.sql junto a este .bat.
+        goto :fin
+    )
+    echo Adjuntando PizzeriaDB si hace falta y dejandola en MULTI_USER...
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -d master -b -i "%SQL_FILE%"
+    if errorlevel 1 (
+        echo Error al cargar la base. Si es un entorno nuevo, ejecute antes 01_creaBaseDatosP-01.bat.
+    ) else (
+        echo Base cargada y en MULTI_USER.
+    )
+    :fin
+    endlocal
+    pause
+PASO A PASO:
+    1. Inicializacion: @echo off, setlocal EnableExtensions y calculo de BASE_DIR y SQL_FILE como en el script 01.
+    2. where sqlcmd: valida que la utilidad este instalada y accesible; si no, muestra el aviso y va a :fin.
+    3. if not exist: comprueba la presencia de 02_cargaBaseDatos.sql en la misma carpeta.
+    4. sqlcmd -d master -b -i "%SQL_FILE%": ejecuta el SQL contra la base maestra, porque attach y cambio de modo se hacen en master.
+    5. if errorlevel 1: si falla, sugiere ejecutar antes el script 01; si funciona, confirma MULTI_USER.
+    6. :fin, endlocal, pause: cierre estandar del script.
+----------------- ARCHIVO: 03_verEstadoConexion-03.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\BAT\03_verEstadoConexion-03.bat
+DESCRIPCION: Diagnostica el estado de LocalDB, de la base PizzeriaDB y la cantidad de filas de sus tablas. Version robusta.
+CODIGO:
+    @echo off
+    setlocal EnableExtensions
+    set "BASE_DIR=%~dp0"
+    set "SQL_FILE=%BASE_DIR%03_verEstadoConexion.sql"
+    where sqlcmd >nul 2>&1
+    if errorlevel 1 (
+        echo ERROR: no se encontro sqlcmd en el PATH.
+        echo Instale SQL Server Command Line Utilities y vuelva a intentar.
+        goto :fin
+    )
+    if not exist "%SQL_FILE%" (
+        echo ERROR: no se encontro el archivo 03_verEstadoConexion.sql junto a este .bat.
+        goto :fin
+    )
+    echo Comprobando estado de conexion y diagnostico...
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -d master -b -i "%SQL_FILE%"
+    :fin
+    endlocal
+    pause
+PASO A PASO:
+    1. Preparacion: rutas BASE_DIR y SQL_FILE apuntando a 03_verEstadoConexion.sql.
+    2. where sqlcmd: comprueba la herramienta; sin ella no se puede consultar SQL Server.
+    3. if not exist: valida que el archivo SQL de diagnostico este junto al .bat.
+    4. sqlcmd -d master -b -i "%SQL_FILE%": corre el diagnostico sobre master (estado de la base, modo de acceso y conteos).
+    5. :fin, endlocal, pause: finaliza y deja la ventana abierta para leer el resultado.
+---------------- ARCHIVO: 04_verTablas-04.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\BAT\04_verTablas-04.bat
+DESCRIPCION: Muestra la estructura de las tablas dbo y todo el contenido de Clientes y Pedidos. Version robusta.
+CODIGO:
+    @echo off
+    setlocal EnableExtensions
+    where sqlcmd >nul 2>&1
+    if errorlevel 1 (
+        echo ERROR: no se encontro sqlcmd en el PATH.
+        echo Instale SQL Server Command Line Utilities y vuelva a intentar.
+        goto :fin
+    )
+    echo Listando estructura y contenido de tablas...
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -d PizzeriaDB -b -Q "SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'dbo' ORDER BY TABLE_NAME, ORDINAL_POSITION;"
+    if errorlevel 1 goto :error
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -d PizzeriaDB -b -Q "SELECT * FROM dbo.Clientes; SELECT * FROM dbo.Pedidos;"
+    if errorlevel 1 goto :error
+    goto :fin
+    :error
+    echo Error al leer la base. Verifique con 03_verEstadoConexion-03.bat.
+    :fin
+    endlocal
+    pause
+PASO A PASO:
+    1. @echo off y setlocal EnableExtensions: preparacion de la consola.
+    2. where sqlcmd: verifica la herramienta; si falta, avisa y salta a :fin.
+    3. Primera consulta -Q: INFORMATION_SCHEMA.COLUMNS devuelve tabla, columna y tipo de dato, ordenados por tabla y posicion.
+    4. if errorlevel 1 goto :error: si la consulta falla, salta al bloque de error en lugar de continuar.
+    5. Segunda consulta -Q: SELECT * de Clientes y de Pedidos para ver los registros actuales.
+    6. :error: muestra un mensaje sugiriendo ejecutar 03_verEstadoConexion-03.bat.
+    7. :fin, endlocal, pause: cierre estandar.
+--------------- ARCHIVO: 05_respaldarBaseDatos-05.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\BAT\05_respaldarBaseDatos-05.bat
+DESCRIPCION: Genera un respaldo .bak de PizzeriaDB en la carpeta respaldo, pidiendo confirmacion si ya existe. Version robusta.
+CODIGO:
+    @echo off
+    setlocal EnableExtensions
+    set "RESPALDO_DIR=%~dp0respaldo"
+    set "BACKUP_FILE=%RESPALDO_DIR%\PizzeriaDB_Backup.bak"
+    where sqlcmd >nul 2>&1
+    if errorlevel 1 (
+        echo ERROR: no se encontro sqlcmd en el PATH.
+        echo Instale SQL Server Command Line Utilities y vuelva a intentar.
+        goto :fin
+    )
+    if not exist "%RESPALDO_DIR%" mkdir "%RESPALDO_DIR%"
+    if exist "%BACKUP_FILE%" (
+        choice /c SN /m "Ya existe un respaldo. Desea sobrescribirlo"
+        if errorlevel 2 (
+            echo Respaldo cancelado.
+            goto :fin
+        )
+    )
+    echo Generando respaldo en %BACKUP_FILE% ...
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -b -Q "BACKUP DATABASE [PizzeriaDB] TO DISK = N'%BACKUP_FILE%' WITH INIT;"
+    if errorlevel 1 (
+        echo Error en el respaldo.
+    ) else (
+        echo Respaldo realizado correctamente.
+    )
+    :fin
+    endlocal
+    pause
+PASO A PASO:
+    1. set RESPALDO_DIR=%~dp0respaldo y BACKUP_FILE: definen la carpeta y el archivo PizzeriaDB_Backup.bak.
+    2. where sqlcmd: valida la herramienta antes de continuar.
+    3. if not exist ... mkdir: crea la carpeta de respaldo si todavia no existe.
+    4. if exist BACKUP_FILE + choice /c SN: pregunta al usuario si desea sobrescribir un respaldo anterior; con N cancela.
+    5. sqlcmd -b -Q "BACKUP DATABASE ... WITH INIT": crea el respaldo; INIT sobrescribe el archivo anterior.
+    6. if errorlevel 1 ... else ...: informa exito o error del respaldo.
+    7. :fin, endlocal, pause: cierre estandar.
+---------------- ARCHIVO: 06_vaciaBaseDatos-06.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\BAT\06_vaciaBaseDatos-06.bat
+DESCRIPCION: Borra todos los clientes y pedidos y reinicia los contadores IDENTITY, con confirmacion y transaccion atomica. Version robusta.
+CODIGO:
+    @echo off
+    setlocal EnableExtensions
+    where sqlcmd >nul 2>&1
+    if errorlevel 1 (
+        echo ERROR: no se encontro sqlcmd en el PATH.
+        echo Instale SQL Server Command Line Utilities y vuelva a intentar.
+        goto :fin
+    )
+    choice /c SN /m "Esto BORRA todos los clientes y pedidos. Desea continuar"
+    if errorlevel 2 (
+        echo Operacion cancelada.
+        goto :fin
+    )
+    echo Vaciando tablas y reiniciando contadores IDENTITY...
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -d PizzeriaDB -b -Q "SET XACT_ABORT ON; BEGIN TRANSACTION; ALTER TABLE dbo.Pedidos DROP CONSTRAINT FK_Pedidos_Clientes; TRUNCATE TABLE dbo.Pedidos; TRUNCATE TABLE dbo.Clientes; ALTER TABLE dbo.Pedidos ADD CONSTRAINT FK_Pedidos_Clientes FOREIGN KEY (IdCliente) REFERENCES dbo.Clientes (IdCliente); COMMIT TRANSACTION;"
+    if errorlevel 1 (
+        echo Error al vaciar la base. No se aplico ningun cambio.
+    ) else (
+        echo Base vaciada y contadores reiniciados.
+    )
+    :fin
+    endlocal
+    pause
+PASO A PASO:
+    1. Inicializacion y where sqlcmd: misma preparacion que los scripts anteriores.
+    2. choice /c SN: pide confirmacion porque la operacion es destructiva; con N se cancela.
+    3. SET XACT_ABORT ON y BEGIN TRANSACTION: aseguran que, si algo falla, se revierta todo junto.
+    4. ALTER TABLE ... DROP CONSTRAINT FK_Pedidos_Clientes: quita temporalmente la llave foranea para poder vaciar ambas tablas.
+    5. TRUNCATE TABLE Pedidos y Clientes: borra todas las filas y reinicia los IDENTITY (a diferencia de DELETE).
+    6. ALTER TABLE ... ADD CONSTRAINT: recrea la llave foranea para dejar la integridad intacta.
+    7. COMMIT TRANSACTION: confirma el conjunto completo de cambios.
+    8. if errorlevel 1 ... else ...: avisa si no se aplico ningun cambio o si la base quedo vaciada.
+    9. :fin, endlocal, pause: cierre estandar.
+------------------- ARCHIVO: 07_desconectaBase-07.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\BAT\07_desconectaBase-07.bat
+DESCRIPCION: Desadjunta PizzeriaDB de LocalDB conservando los archivos .mdf y .ldf. Version robusta.
+CODIGO:
+    @echo off
+    setlocal EnableExtensions
+    where sqlcmd >nul 2>&1
+    if errorlevel 1 (
+        echo ERROR: no se encontro sqlcmd en el PATH.
+        echo Instale SQL Server Command Line Utilities y vuelva a intentar.
+        goto :fin
+    )
+    echo Desconectando la base de datos de la instancia local...
+    sqlcmd -S "(localdb)\MSSQLLocalDB" -d master -b -Q "ALTER DATABASE [PizzeriaDB] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; EXEC sp_detach_db 'PizzeriaDB';"
+    if errorlevel 1 (
+        echo Error al desconectar la base.
+    ) else (
+        echo Base desconectada. Los archivos .mdf y .ldf se conservan.
+        echo Para volver a usarla ejecute 02_cargaBaseDatos-02.bat.
+    )
+    :fin
+    endlocal
+    pause
+PASO A PASO:
+    1. Inicializacion y where sqlcmd: preparacion habitual.
+    2. ALTER DATABASE ... SET SINGLE_USER WITH ROLLBACK IMMEDIATE: cierra las conexiones activas para poder desadjuntar.
+    3. EXEC sp_detach_db 'PizzeriaDB': desadjunta la base; los archivos fisicos permanecen en disco.
+    4. if errorlevel 1 ... else ...: informa el resultado y recuerda ejecutar 02_cargaBaseDatos-02.bat para volver a usarla.
+    5. :fin, endlocal, pause: cierre estandar.
+----------------- ARCHIVO: 01_creaBaseDatosP-01.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\01_creaBaseDatosP-01.bat
+DESCRIPCION: Crea la base PizzeriaDB si no existe. Version simple (sin verificaciones de sqlcmd ni script externo).
+CODIGO:
+    @echo off
+    setlocal
+    set DB_NAME=PizzeriaDB
+    echo Creando base de datos %DB_NAME%...
+    sqlcmd -S (localdb)\MSSQLLocalDB -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '%DB_NAME%') CREATE DATABASE [%DB_NAME%];"
+    if %ERRORLEVEL% equ 0 (echo Base creada con exito.) else (echo Error al crear la base.)
+    endlocal
+    pause
+PASO A PASO:
+    1. @echo off y setlocal: oculta comandos y aisla variables.
+    2. set DB_NAME=PizzeriaDB: guarda el nombre de la base en una variable.
+    3. echo: muestra un mensaje de inicio.
+    4. sqlcmd -Q "IF NOT EXISTS ... CREATE DATABASE": consulta sys.databases y crea la base solo si no existe.
+    5. if %ERRORLEVEL% equ 0 ... else ...: comprueba el codigo de salida e informa exito o error.
+    6. endlocal y pause: restaura variables y espera al usuario.
+---------------- ARCHIVO: 02_cargaBaseDatos-02.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\02_cargaBaseDatos-02.bat
+DESCRIPCION: Deja PizzeriaDB en modo MULTI_USER. Version simple.
+CODIGO:
+    @echo off
+    setlocal
+    set DB_NAME=PizzeriaDB
+    echo Configurando acceso de la base %DB_NAME%...
+    sqlcmd -S (localdb)\MSSQLLocalDB -d master -Q "ALTER DATABASE [%DB_NAME%] SET MULTI_USER WITH ROLLBACK IMMEDIATE;"
+    if %ERRORLEVEL% equ 0 (echo Base configurada en MULTI_USER.) else (echo Error al configurar la base.)
+    endlocal
+    pause
+PASO A PASO:
+    1. Inicializacion con @echo off, setlocal y set DB_NAME.
+    2. echo: avisa que se va a configurar el acceso.
+    3. sqlcmd -d master -Q "ALTER DATABASE ... SET MULTI_USER WITH ROLLBACK IMMEDIATE": habilita multiples usuarios y corta conexiones pendientes.
+    4. if %ERRORLEVEL%: confirma o informa el error.
+    5. endlocal y pause: cierre del script.
+---------------- ARCHIVO: 03_verEstadoConexion-03.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\03_verEstadoConexion-03.bat
+DESCRIPCION: Muestra el estado de la base y cuenta las filas de Clientes y Pedidos. Version simple.
+CODIGO:
+    @echo off
+    setlocal
+    echo Comprobando estado de conexion y diagnostico...
+    sqlcmd -S (localdb)\MSSQLLocalDB -Q "SELECT name, state_desc, user_access_desc FROM sys.databases WHERE name = 'PizzeriaDB';"
+    sqlcmd -S (localdb)\MSSQLLocalDB -d PizzeriaDB -Q "SELECT 'Clientes' AS Tabla, COUNT(*) AS Filas FROM dbo.Clientes UNION ALL SELECT 'Pedidos', COUNT(*) FROM dbo.Pedidos;"
+    endlocal
+    pause
+PASO A PASO:
+    1. @echo off y setlocal: preparacion.
+    2. Primera consulta -Q: sys.databases devuelve nombre, estado y tipo de acceso de PizzeriaDB.
+    3. Segunda consulta -Q: UNION ALL cuenta Clientes y Pedidos en una sola salida.
+    4. endlocal y pause: cierre.
+---------------- ARCHIVO: 04_verTablas-04.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\04_verTablas-04.bat
+DESCRIPCION: Lista la estructura de las tablas dbo y su contenido. Version simple.
+CODIGO:
+    @echo off
+    setlocal
+    echo Listando estructura y contenido de tablas...
+    sqlcmd -S (localdb)\MSSQLLocalDB -d PizzeriaDB -Q "SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'dbo';"
+    sqlcmd -S (localdb)\MSSQLLocalDB -d PizzeriaDB -Q "SELECT * FROM dbo.Clientes; SELECT * FROM dbo.Pedidos;"
+    endlocal
+    pause
+PASO A PASO:
+    1. Preparacion con @echo off y setlocal.
+    2. Consulta INFORMATION_SCHEMA.COLUMNS: muestra tabla, columna y tipo de dato.
+    3. SELECT * de Clientes y Pedidos: muestra todos los registros.
+    4. endlocal y pause: cierre.
+------------------ ARCHIVO: 05_respaldarBaseDatos-05.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\05_respaldarBaseDatos-05.bat
+DESCRIPCION: Genera un respaldo .bak de PizzeriaDB. Version simple (sin confirmacion).
+CODIGO:
+    @echo off
+    setlocal
+    if not exist respaldo mkdir respaldo
+    set BACKUP_FILE=%~dp0respaldo\PizzeriaDB_Backup.bak
+    echo Generando respaldo en %BACKUP_FILE%...
+    sqlcmd -S (localdb)\MSSQLLocalDB -Q "BACKUP DATABASE [PizzeriaDB] TO DISK='%BACKUP_FILE%' WITH INIT;"
+    if %ERRORLEVEL% equ 0 (echo Respaldo realizado correctamente.) else (echo Error en el respaldo.)
+    endlocal
+    pause
+PASO A PASO:
+    1. if not exist respaldo mkdir respaldo: asegura que exista la carpeta de destino.
+    2. set BACKUP_FILE=%~dp0respaldo\PizzeriaDB_Backup.bak: ruta del archivo de respaldo.
+    3. sqlcmd -Q "BACKUP DATABASE ... WITH INIT": crea o sobrescribe el respaldo.
+    4. if %ERRORLEVEL%: informa exito o error.
+    5. endlocal y pause: cierre.
+---------------- ARCHIVO: 06_vaciaBaseDatos-06.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\06_vaciaBaseDatos-06.bat
+DESCRIPCION: Vacia Clientes y Pedidos y reinicia IDENTITY. Version simple (sin confirmacion ni transaccion).
+CODIGO:
+    @echo off
+    setlocal
+    echo Vaciando tablas y reiniciando contadores IDENTITY...
+    sqlcmd -S (localdb)\MSSQLLocalDB -d PizzeriaDB -Q "ALTER TABLE dbo.Pedidos DROP CONSTRAINT FK_Pedidos_Clientes; TRUNCATE TABLE dbo.Pedidos; TRUNCATE TABLE dbo.Clientes; ALTER TABLE dbo.Pedidos ADD CONSTRAINT FK_Pedidos_Clientes FOREIGN KEY (IdCliente) REFERENCES dbo.Clientes (IdCliente);"
+    if %ERRORLEVEL% equ 0 (echo Base vaciada y contadores reiniciados.) else (echo Error al vaciar la base.)
+    endlocal
+    pause
+PASO A PASO:
+    1. Preparacion con @echo off y setlocal.
+    2. ALTER TABLE ... DROP CONSTRAINT: quita la llave foranea para poder truncar.
+    3. TRUNCATE TABLE Pedidos y Clientes: borra filas y reinicia contadores IDENTITY.
+    4. ALTER TABLE ... ADD CONSTRAINT: restaura la llave foranea.
+    5. if %ERRORLEVEL%: informa exito o error.
+    6. endlocal y pause: cierre.
+-------------- ARCHIVO: 07_desconectaBase-07.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\07_desconectaBase-07.bat
+DESCRIPCION: Desadjunta PizzeriaDB de LocalDB. Version simple.
+CODIGO:
+    @echo off
+    setlocal
+    echo Desconectando la base de datos de la instancia local...
+    sqlcmd -S (localdb)\MSSQLLocalDB -d master -Q "ALTER DATABASE [PizzeriaDB] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; EXEC sp_detach_db 'PizzeriaDB';"
+    if %ERRORLEVEL% equ 0 (echo Base desconectada exitosamente.) else (echo Error al desconectar la base.)
+    endlocal
+    pause
+PASO A PASO:
+    1. Preparacion con @echo off y setlocal.
+    2. ALTER DATABASE ... SINGLE_USER WITH ROLLBACK IMMEDIATE: desconecta usuarios.
+    3. EXEC sp_detach_db: desadjunta la base y conserva los archivos.
+    4. if %ERRORLEVEL%: informa exito o error.
+    5. endlocal y pause: cierre.
+------------------ ARCHIVO: reconectaBD.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\reconectaBD.bat
+DESCRIPCION: Vuelve a adjuntar PizzeriaDB a LocalDB usando los archivos .mdf y .ldf, asegura MULTI_USER y verifica el estado.
+CODIGO:
+    @echo off
+    setlocal
+    set DB_NAME=PizzeriaDB
+    set MDF_PATH=C:\Users\jvv\Codigo_Funcional\BDpizzeria\pizzeriaDB.mdf
+    set LDF_PATH=C:\Users\jvv\Codigo_Funcional\BDpizzeria\pizzeriaDB.ldf
+    echo ========================================================
+    echo  Reconectando base de datos %DB_NAME% en LocalDB...
+    echo ========================================================
+    sqlcmd -S (localdb)\MSSQLLocalDB -d master -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '%DB_NAME%') CREATE DATABASE [%DB_NAME%] ON (FILENAME = '%MDF_PATH%'), (FILENAME = '%LDF_PATH%') FOR ATTACH;"
+    if %ERRORLEVEL% neq 0 (
+        echo [ERROR] No se pudo adjuntar la base de datos. Verifica que las rutas .mdf y .ldf sean correctas.
+        pause
+        exit /b %ERRORLEVEL%
+    )
+    echo Asegurando modo MULTI_USER...
+    sqlcmd -S (localdb)\MSSQLLocalDB -d master -Q "ALTER DATABASE [%DB_NAME%] SET MULTI_USER WITH ROLLBACK IMMEDIATE;"
+    echo Verificando estado de conexion...
+    sqlcmd -S (localdb)\MSSQLLocalDB -d %DB_NAME% -Q "SELECT name AS BaseDatos, state_desc AS Estado, user_access_desc AS Acceso FROM sys.databases WHERE name = '%DB_NAME%';"
+    echo [OK] Proceso finalizado.
+    endlocal
+    pause
+PASO A PASO:
+    1. @echo off y setlocal: preparacion de la consola.
+    2. set DB_NAME, MDF_PATH y LDF_PATH: definen el nombre de la base y las rutas fisicas de los archivos.
+    3. echo con separadores: muestra un encabezado legible.
+    4. sqlcmd ... IF NOT EXISTS ... CREATE DATABASE ... FOR ATTACH: si la base no esta registrada, la adjunta desde los archivos.
+    5. if %ERRORLEVEL% neq 0 (...): si falla, muestra el error, pausa y sale con exit /b devolviendo el codigo.
+    6. ALTER DATABASE ... SET MULTI_USER WITH ROLLBACK IMMEDIATE: garantiza acceso multiple.
+    7. SELECT name, state_desc, user_access_desc: verifica que la base este ONLINE y accesible.
+    8. echo [OK], endlocal y pause: confirma el proceso y espera al usuario.
+------------------ ARCHIVO: reconectaBD.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\comandos\reconectaBD.bat
+DESCRIPCION: Vuelve a adjuntar PizzeriaDB a LocalDB usando los archivos .mdf y .ldf, asegura MULTI_USER y verifica el estado.
+CODIGO:
+    @echo off
+    setlocal
+    set DB_NAME=PizzeriaDB
+    set MDF_PATH=C:\Users\jvv\Codigo_Funcional\BDpizzeria\pizzeriaDB.mdf
+    set LDF_PATH=C:\Users\jvv\Codigo_Funcional\BDpizzeria\pizzeriaDB.ldf
+    echo ========================================================
+    echo  Reconectando base de datos %DB_NAME% en LocalDB...
+    echo ========================================================
+    sqlcmd -S (localdb)\MSSQLLocalDB -d master -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '%DB_NAME%') CREATE DATABASE [%DB_NAME%] ON (FILENAME = '%MDF_PATH%'), (FILENAME = '%LDF_PATH%') FOR ATTACH;"
+    if %ERRORLEVEL% neq 0 (
+        echo [ERROR] No se pudo adjuntar la base de datos. Verifica que las rutas .mdf y .ldf sean correctas.
+        pause
+        exit /b %ERRORLEVEL%
+    )
+    echo Asegurando modo MULTI_USER...
+    sqlcmd -S (localdb)\MSSQLLocalDB -d master -Q "ALTER DATABASE [%DB_NAME%] SET MULTI_USER WITH ROLLBACK IMMEDIATE;"
+    echo Verificando estado de conexion...
+    sqlcmd -S (localdb)\MSSQLLocalDB -d %DB_NAME% -Q "SELECT name AS BaseDatos, state_desc AS Estado, user_access_desc AS Acceso FROM sys.databases WHERE name = '%DB_NAME%';"
+    echo [OK] Proceso finalizado.
+    endlocal
+    pause
+PASO A PASO:
+    1. @echo off y setlocal: preparacion de la consola.
+    2. set DB_NAME, MDF_PATH y LDF_PATH: definen el nombre de la base y las rutas fisicas de los archivos.
+    3. echo con separadores: muestra un encabezado legible.
+    4. sqlcmd ... IF NOT EXISTS ... CREATE DATABASE ... FOR ATTACH: si la base no esta registrada, la adjunta desde los archivos.
+    5. if %ERRORLEVEL% neq 0 (...): si falla, muestra el error, pausa y sale con exit /b devolviendo el codigo.
+    6. ALTER DATABASE ... SET MULTI_USER WITH ROLLBACK IMMEDIATE: garantiza acceso multiple.
+    7. SELECT name, state_desc, user_access_desc: verifica que la base este ONLINE y accesible.
+    8. echo [OK], endlocal y pause: confirma el proceso y espera al usuario.
+---------------- ARCHIVO: verRegistrosTablas.bat
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\respaldo\verRegistrosTablas.bat
+DESCRIPCION: Muestra tablas y registros de las COPIAS guardadas en respaldo, sin modificar la base en vivo ni los archivos originales.
+CODIGO:
+    @echo off
+    chcp 65001 >nul
+    setlocal
+    title Ver registros de las copias en respaldo - Pizzeria Bella Italia
+    cd /d "%~dp0"
+    set "SERVIDOR=(localdb)\MSSQLLocalDB"
+    set "SCRIPT=verRegistrosTablas.sql"
+    set "VISORDIR=%CD%\_visor"
+    echo ============================================================
+    echo  VER TABLAS Y REGISTROS DE LAS COPIAS EN BD
+    echo ============================================================
+    if not exist "%SCRIPT%" (
+        echo [ERROR] No se encontro el script %SCRIPT% en esta carpeta.
+        goto :error
+    )
+    if not exist "%CD%\pizzeriaDB.mdf" (
+        echo [ERROR] No hay copia de pizzeriaDB.mdf en esta carpeta.
+        echo         Ejecute ..\comandos\BAT\respaldarBaseDatos-05.bat para generarla.
+        goto :error
+    )
+    set "CONLOG=0"
+    if exist "%CD%\pizzeriaDB.ldf" set "CONLOG=1"
+    set "SQLCMD="
+    where sqlcmd >nul 2>&1
+    if not errorlevel 1 set "SQLCMD=sqlcmd"
+    if not defined SQLCMD (
+        for %%P in (
+            "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\SQLCMD.EXE"
+            "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\SQLCMD.EXE"
+            "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\160\Tools\Binn\SQLCMD.EXE"
+            "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\150\Tools\Binn\SQLCMD.EXE"
+            "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\140\Tools\Binn\SQLCMD.EXE"
+        ) do if exist "%%~P" set "SQLCMD=%%~P"
+    )
+    if not defined SQLCMD (
+        echo [ERROR] No se encontro sqlcmd.
+        goto :error
+    )
+    set "LOCALDB="
+    where sqllocaldb >nul 2>&1
+    if not errorlevel 1 set "LOCALDB=sqllocaldb"
+    if not defined LOCALDB (
+        for %%P in (
+            "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\SqlLocalDB.exe"
+            "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\SqlLocalDB.exe"
+            "C:\Program Files\Microsoft SQL Server\170\Tools\Binn\SqlLocalDB.exe"
+        ) do if exist "%%~P" set "LOCALDB=%%~P"
+    )
+    if defined LOCALDB "%LOCALDB%" start MSSQLLocalDB >nul 2>&1
+    rem ------------------------------------------------------------------
+    rem Se trabaja sobre COPIAS de las copias para no bloquear ni borrar
+    rem los archivos originales de la carpeta respaldo.
+    rem ------------------------------------------------------------------
+    if exist "%VISORDIR%" rmdir /s /q "%VISORDIR%" >nul 2>&1
+    mkdir "%VISORDIR%" >nul 2>&1
+    if not exist "%VISORDIR%" (
+        echo [ERROR] No se pudo crear la carpeta temporal:
+        echo         %VISORDIR%
+        goto :error
+    )
+    copy /Y "%CD%\pizzeriaDB.mdf" "%VISORDIR%\visor.mdf" >nul
+    if errorlevel 1 goto :error_copia
+    if "%CONLOG%"=="1" (
+        copy /Y "%CD%\pizzeriaDB.ldf" "%VISORDIR%\visor.ldf" >nul
+        if errorlevel 1 goto :error_copia
+    )
+    echo Copias en respaldo: %CD%\pizzeriaDB.mdf
+    echo BD temporal    : %VISORDIR%
+    echo Con archivo log: %CONLOG%
+    echo.
+    "%SQLCMD%" -S "%SERVIDOR%" -E -b -W -i "%SCRIPT%" -v VisorDir="%VISORDIR%" ConLog=%CONLOG%
+    set "RC=%errorlevel%"
+    rmdir /s /q "%VISORDIR%" >nul 2>&1
+    if exist "%VISORDIR%" echo [AVISO] Quedaron archivos en %VISORDIR%
+    if not "%RC%"=="0" goto :error
+    echo.
+    echo ============================================================
+    echo  FIN - Las copias en respaldo siguen intactas y la base en vivo
+    echo        PizzeriaDB no fue modificada.
+    echo ============================================================
+    pause
+    exit /b 0
+    :error_copia
+    echo [ERROR] No se pudieron copiar los archivos a la carpeta temporal.
+    rmdir /s /q "%VISORDIR%" >nul 2>&1
+    goto :error
+    :error
+    echo.
+    echo ============================================================
+    echo  ERROR: no se pudo mostrar el contenido de las copias en respaldo.
+    echo ============================================================
+    pause
+    exit /b 1
+PASO A PASO:
+    1. @echo off, chcp 65001 y setlocal: activa UTF-8 para acentos, oculta comandos y aisla variables.
+    2. title y cd /d "%~dp0": pone titulo a la ventana y situa la consola en la carpeta respaldo.
+    3. set SERVIDOR, SCRIPT y VISORDIR: definen LocalDB, el SQL a ejecutar y una carpeta temporal de trabajo.
+    4. if not exist SCRIPT / MDF: validan que esten el SQL y la copia de la base; si falta algo, van a :error.
+    5. CONLOG: detecta si existe pizzeriaDB.ldf para decidir si se copia tambien el log.
+    6. Busqueda de sqlcmd: primero en PATH y luego en rutas tipicas de SQL Server (ODBC 180 a 140).
+    7. Busqueda de sqllocaldb: en PATH o rutas conocidas, y luego sqllocaldb start MSSQLLocalDB para asegurar la instancia.
+    8. if exist _visor rmdir /s /q y mkdir: limpia y crea la carpeta temporal de trabajo.
+    9. copy /Y de .mdf y .ldf a _visor con nombres visor.mdf/visor.ldf: trabaja sobre COPIAS para no bloquear los originales.
+    10. sqlcmd -i SCRIPT -v VisorDir=... ConLog=...: ejecuta el SQL pasando como parametros la ruta temporal y si hay log.
+    11. set RC=%errorlevel%: guarda el codigo de salida antes de borrar la carpeta temporal.
+    12. rmdir /s /q _visor: elimina la carpeta temporal y avisa si quedaron archivos.
+    13. if not "%RC%"=="0" goto :error: segun el resultado muestra el fin correcto o el error.
+    14. :error_copia y :error: rutas de salida que limpian la temporal y terminan con exit /b 0 o 1.

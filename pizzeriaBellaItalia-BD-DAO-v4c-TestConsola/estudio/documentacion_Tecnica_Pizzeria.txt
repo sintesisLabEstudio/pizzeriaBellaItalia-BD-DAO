@@ -1,0 +1,285 @@
+INSTITUTO PROFESIONAL VIRGINIO GÓMEZ - SEDE CONCEPCIÓN | 2026 SEMESTRE 2
+    Documentación Técnica del Proyecto
+    Sistema POS Pizzería Bella Italia - Concepción
+Plantilla y Manual de Documentación Técnica de Software - Semana 13
+Estudiante: Jorge Vera Videla
+Asignatura: Construcción de Software (PA26-2026) - Código 202700-2
+Unidad Temática: Unidad III: Integración de Aplicaciones con Bases de Datos y Mantenibilidad
+Caso de Estudio Base: Sistema POS Pizzería Bella Italia (Certamen 2 / Proyecto Integrador)
+Entorno Tecnológico: Visual Studio | C# (.NET 10) | Windows Forms | SQL Server LocalDB (PizzeriaDB)
+Resultados de Aprendizaje:
+  - D2.C2-RA3: Construir software aplicando lenguajes de programación de base de datos.
+  - D2.C1-RA2: Generar la documentación técnica necesaria de las aplicaciones programadas.
+Esta plantilla constituye la estructura oficial que los desarrolladores deben completar para documentar técnicamente la solución final. Cada sección contiene la explicación del estándar de ingeniería de software, los diagramas de arquitectura y diseño del caso Pizzería Bella Italia y la pauta guiada de llenado.
+
+1. Ficha Técnica y Descripción General del Sistema
+La cadena gastronómica "Pizzería Bella Italia (Sucursal Concepción)" requiere automatizar la atención y el registro de pedidos mediante una aplicación de escritorio rápida y confiable. El sistema debe registrar los datos del cliente (nombre y teléfono), configurar la pizza mediante tamaño y tipo de masa, seleccionar ingredientes adicionales, elegir servicio a domicilio o retiro en local, otorgar un descuento por convenio estudiante/IPVG (10%), presentar el desglose neto y de IVA chileno (19%), almacenar las transacciones en una base de datos relacional SQL Server LocalDB y mantener el catálogo de clientes y el historial de pedidos.
+La Ficha Técnica resume las especificaciones operacionales, arquitectura y librerías que componen la solución de software:
++--------------------------+--------------------------------------------------------------------------------------------------------------+
+| Parámetro / Componente   | Especificación Técnica del Proyecto                                                                          |
++--------------------------+--------------------------------------------------------------------------------------------------------------+
+| Nombre del Sistema       | Sistema Punto de Venta (POS) y Gestión de Pedidos Pizzería Bella Italia                                      |
+| Arquitectura de Software | Arquitectura en 2 Capas (Presentación GUI WinForms Dominio POO y Acceso a Datos DAO)                         |
+| Lenguaje y Framework     | C# (.NET 10) sobre Windows Forms en entorno administrado .NET                                                |
+| Motor de Base de Datos   | SQL Server LocalDB (localdb)\MSSQLLocalDB / Base de Datos PizzeriaDB                                         |
+| Patrones de Diseño       | Data Access Object (DAO), Helper Estático de Conexión, Entidades POCO/DTO y Transacciones ADO.NET            |
+| Control de Versiones     | Git Local / GitHub (Sincronización Remota)                                                                   |
+| Módulos Principales      | Program.cs, FormPedido.cs, FormClientes.cs, CalculadoraPedido.cs, PedidoDAO.cs, ClienteDAO.cs, ConexionBD.cs |
+| Librerías                | Microsoft.Data.SqlClient 7.1.2, System.Windows.Forms, System.Data                                            |
++--------------------------+--------------------------------------------------------------------------------------------------------------+
+
+Construcción de Software (PA26-2026) | IP Virginio Gómez - Sede Concepción   Página 1
+
+2. Diagrama de Arquitectura en Capas
+El sistema se organiza bajo el principio de separacion de responsabilidades en 4 estratos desacoplados:
+    +------------------------------------------------------------------------------+
+    |CAPA PRESENTACIÓN (GUI WinForms)                                              |
+    |   Program.cs  ->  FormPedido.cs  ->  FormClientes.cs                         |
+    |   DataGridView / ComboBox / CheckBox / RadioButton / Eventos / MessageBox    |
+    +------------------------------------------------------------------------------+
+                                           |
+                                           v
+    +------------------------------------------------------------------------------+
+    |CAPA DOMINIO (Entidades POO y Reglas de Negocio)                              |
+    |   PedidoPizza.cs   Cliente.cs   CalculadoraPedido.cs                         |
+    |   IVA 19% / Descuento 10% / Delivery $2.000 / Ingredientes $800 c/u          |
+    +------------------------------------------------------------------------------+
+                                           |
+                                           v
+    +------------------------------------------------------------------------------+
+    |ACCESO A DATOS (ADO.NET / DAO)                                                |
+    |   PedidoDAO.cs     ClienteDAO.cs     ConexionBD.cs                           |
+    |   Consultas parametrizadas / SqlDataAdapter / SqlTransaction                 |
+    +------------------------------------------------------------------------------+
+                                           |
+                                           v
+    +------------------------------------------------------------------------------+
+    |PERSISTENCIA (Motor Relacional)                                               |
+    |   Servidor: (localdb)\MSSQLLocalDB                                           |
+    |   Base de datos: PizzeriaDB -> dbo.Clientes / dbo.Pedidos                    |
+    +------------------------------------------------------------------------------+
+Figura 2.1: Esquema de Arquitectura en 2 Capas (4 estratos) para la aplicación Pizzería Bella Italia POS en C# y SQL Server LocalDB.
+La capa de presentación nunca abre conexiones: delega en los DAO. El punto de entrada Program.cs configura la aplicación WinForms (ApplicationConfiguration.Initialize) y ejecuta FormPedido como formulario principal mediante Application.Run.
+
+Construcción de Software (PA26-2026) | IP Virginio Gómez - Sede Concepción   Página 2
+
+3. Diagrama de Casos de Uso del Sistema
+Define la interaccion funcional entre los actores del punto de venta y los limites de la aplicación:
+    Sistema POS Pizzería Bella Italia
+      Actor: Cajero / Atención al Cliente
+         |-- CU01: Registrar Pedido (Calcular Total y Grabar)
+         |      |-- <<include>> CU03: Calcular Montos (IVA 19%, Dcto 10%, Delivery)
+         |      |-- <<include>> CU04: Validar Datos del Cliente
+         |      |-- <<extend>>  CU05: Actualizar Pedido
+         |      `-- <<extend>>  CU06: Eliminar Pedido
+         |-- CU02: Gestionar Clientes (Alta, Baja, Modificación)
+         |      `-- <<extend>>  CU08: Seleccionar Cliente para un Pedido
+         `-- CU07: Consultar Pedidos (Todos / por Cliente / por ID)
+      Actor: Administrador / Supervisor
+         |-- CU05: Actualizar Pedido
+         |-- CU06: Eliminar Pedido
+         `-- CU09: Probar Conexión SQL
+Figura 3.1: Diagrama de Casos de Uso UML para los roles Cajero / Supervisor de la pizzería.
++-------------------+---------------------------+----------------------------------------------------------------------------------------+---------------------+
+| Actor             | Caso de Uso               | Descripción Funcional                                                                  | Relación            |
++-------------------+---------------------------+----------------------------------------------------------------------------------------+---------------------+
+| Cajero / Atención | CU01: Registrar Pedido    | Captura cliente, tamaño, masa, adicionales y servicio; calcula y graba en dbo.Pedidos. | Principal           |
+| Cajero / Atención | CU02: Gestionar Clientes  | Alta, baja, modificación y búsqueda en dbo.Clientes.                                   | Principal           |
+| Cajero / Atención | CU03: Calcular Montos     | Aplica IVA 19%, descuento 10% y delivery $2.000 mediante CalculadoraPedido.            | <<include>> de CU01 |
+| Cajero / Atención | CU04: Validar Datos       | Verifica que nombre y teléfono no esten vacios antes de grabar.                        | <<include>> de CU01 |
+| Cajero / Atención | CU07: Consultar Pedidos   | Carga el DataGridView con todos los pedidos, por cliente (LIKE) o por ID.              | Principal           |
+| Cajero / Atención | CU08: Seleccionar Cliente | Pasa nombre y teléfono desde FormClientes a FormPedido.                                | <<extend>> de CU02  |
+| Supervisor        | CU05: Actualizar Pedido   | Modifica el pedido indicado por ID y reasocia el cliente en una transaccion.           | <<extend>> de CU01  |
+| Supervisor        | CU06: Eliminar Pedido     | Borrado en base de datos previa confirmación MessageBox.                               | <<extend>> de CU01  |
+| Supervisor        | CU09: Probar Conexión     | Verifica el estado de la BD con ConexionBD.ProbarConexion().                           | Principal           |
++-------------------+---------------------------+----------------------------------------------------------------------------------------+---------------------+
+
+Construcción de Software (PA26-2026) | IP Virginio Gómez - Sede Concepción   Página 3
+
+4. Diagrama de Clases UML (Dominio y Acceso a Datos)
+Estructura de clases orientada a objetos en C# con sus propiedades, visibilidades y relaciones:
+    +------------------------------------+    +----------------------------------------+
+    |ConexionBD  (static)                |    |CalculadoraPedido  (static)             |
+    |- cadenaConexion : string           |    |- TamanoPorDefecto : string             |
+    |+ CadenaConexion : string           |    |- MasaPorDefecto : string               |
+    |+ ObtenerConexion(): SqlConnection  |    |+ Tamanos : IReadOnlyDictionary         |
+    |+ ProbarConexion() : bool           |    |+ Masas  : IReadOnlyDictionary          |
+    +------------------------------------+    |+ Calcular(DatosPedido): PedidoPizza    |
+                                              +----------------------------------------+
+                      | usa                              | crea
+    +----------------------------------+    +----------------------------------+
+    |ClienteDAO                        |    |PedidoPizza                       |
+    |+ ObtenerClientesDataTable()      |    |+ IdPedido, IdCliente : int       |
+    |+ BuscarPorNombreYTelefono()      |    |+ Cliente, Teléfono : string      |
+    |+ InsertarCliente() : int         |    |+ TamanoNombre, MasaNombre        |
+    |+ InsertarClienteConTransaccion() |    |+ PrecioBaseTamano, RecargoMasa   |
+    |+ ObtenerOCrearIdCliente()        |    |+ QuesoExtra...Tocino : bool      |
+    |+ ActualizarCliente() : bool      |    |+ EsDelivery, AplicaConvenio      |
+    |+ EliminarCliente() : bool        |    |+ CostoIngredientes, Subtotal     |
+    |+ ValidaClienteSinPedidos()       |    |+ MontoDescuento, CostoDelivery   |
+    |+ BuscarClientesDataTable()       |    |+ NetoAfecto, MontoIva            |
+    +----------------------------------+    |+ TotalPagar : int                |
+                                            +----------------------------------+
+                      | usa                              ^
+                      v                              |
+    +----------------------------------+      +--------------------------+
+    |PedidoDAO                         |------|Cliente                   |
+    |+ InsertarPedido() : bool         |      |+ IdCliente : int         |
+    |+ ObtenerPedidosDataTable()       |      |+ Nombre : string         |
+    |+ BuscarPedidosPorCliente()       |      |+ Teléfono : string       |
+    |+ ObtenerPedidoPorId()            |      +--------------------------+
+    |+ ActualizarPedido() : bool       |                                  
+    |+ EliminarPedido() : bool         |                                  
+    +----------------------------------+                                  
+Figura 4.1: Diagrama de Clases UML detallando CalculadoraPedido, PedidoPizza, Cliente, ConexionBD, PedidoDAO y ClienteDAO.
+Resumen del Catálogo de Clases:
+  - ConexionBD.cs (Helper Estático): Centraliza la cadena de conexión a (localdb)\MSSQLLocalDB con base PizzeriaDB, abre SqlConnection nuevas y ofrece ProbarConexion(). Solo los DAO la utilizan.
+  - PedidoPizza.cs (Entidad de Dominio): Modela el pedido con propiedades que mapean dbo.Pedidos, incluyendo los montos calculados y persistidos.
+  - Cliente.cs (Entidad de Dominio): Propiedades IdCliente, Nombre y Teléfono que mapean dbo.Clientes.
+  - CalculadoraPedido.cs (Servicio de Reglas de Negocio): Diccionarios de tamanos y masas, clase anidada DatosPedido y metodo Calcular que aplica descuento, delivery e IVA.
+  - PedidoDAO.cs (Objeto de Acceso a Datos): CRUD parametrizado sobre dbo.Pedidos con transacciones en InsertarPedido y ActualizarPedido.
+  - ClienteDAO.cs (Objeto de Acceso a Datos): ABM de dbo.Clientes, busquedas LIKE, deteccion de duplicados (SqlException 2601/2627) y reutilizacion de transacciones del llamador.
+
+Construcción de Software (PA26-2026) | IP Virginio Gómez - Sede Concepción   Página 4
+
+5. Modelo Entidad-Relación y Estructura SQL Server LocalDB
+Definicion del esquema relacional persistente en la base de datos PizzeriaDB:
+    +----------------------------------+
+    |dbo.Clientes                      |
+    |PK IdCliente INT IDENTITY(1,1)    |
+    |   Cliente NVARCHAR(100)          |
+    |   Teléfono NVARCHAR(30)          |
+    |UQ (Cliente, Teléfono)            |
+    +----------------------------------+
+                     | 1
+                     |
+                     | N
+                     v
+    +----------------------------------------------+
+    |dbo.Pedidos                                   |
+    |PK IdPedido INT IDENTITY(1,1)                 |
+    |FK IdCliente INT NOT NULL                     |
+    |   Cliente NVARCHAR(100)                      |
+    |   Teléfono NVARCHAR(30)                      |
+    |   TamanoNombre NVARCHAR(50)                  |
+    |   PrecioBaseTamano INT                       |
+    |   MasaNombre NVARCHAR(50)                    |
+    |   RecargoMasa INT                            |
+    |   QuesoExtra...Tocino BIT                    |
+    |   EsDelivery BIT                             |
+    |   AplicaConvenioEstudiante BIT               |
+    |   CostoIngredientes INT                      |
+    |   SubtotalPizza INT                          |
+    |   MontoDescuento INT                         |
+    |   CostoDelivery INT                          |
+    |   NetoAfecto INT                             |
+    |   MontoIva INT                               |
+    |   TotalPagar INT                             |
+    +----------------------------------------------+
+Figura 5.1: Estructura de campos, tipos de datos y claves de dbo.Clientes y dbo.Pedidos en PizzeriaDB.
++--------------------------+---------------+------------------------------+----------------------------------+
+| Campo SQL                | Tipo de Dato  | Restricciones                | Propiedad C# Mapeada             |
++--------------------------+---------------+------------------------------+----------------------------------+
+|  dbo.Clientes            |               |                              |                                  |
+| IdCliente                | INT           | PK, IDENTITY(1,1)            | int IdCliente                    |
+| Cliente                  | NVARCHAR(100) | NOT NULL                     | string Nombre                    |
+| Teléfono                 | NVARCHAR(30)  | NOT NULL                     | string Teléfono                  |
+| (Cliente, Teléfono)      | UNIQUE        | UQ_Clientes_Cliente_Teléfono | Control duplicados en ClienteDAO |
+|  dbo.Pedidos             |               |                              |                                  |
+| IdPedido                 | INT           | PK, IDENTITY(1,1)            | int IdPedido                     |
+| IdCliente                | INT           | FK a dbo.Clientes, NOT NULL  | int IdCliente                    |
+| Cliente                  | NVARCHAR(100) | NOT NULL                     | string Cliente                   |
+| Teléfono                 | NVARCHAR(30)  | NOT NULL                     | string Teléfono                  |
+| TamanoNombre             | NVARCHAR(50)  | NOT NULL                     | string TamanoNombre              |
+| PrecioBaseTamano         | INT           | NOT NULL                     | int PrecioBaseTamano             |
+| MasaNombre               | NVARCHAR(50)  | NOT NULL                     | string MasaNombre                |
+| RecargoMasa              | INT           | NOT NULL                     | int RecargoMasa                  |
+| QuesoExtra               | BIT           | NOT NULL                     | bool QuesoExtra                  |
+| Pepperoni                | BIT           | NOT NULL                     | bool Pepperoni                   |
+| Champinones              | BIT           | NOT NULL                     | bool Champinones                 |
+| Aceitunas                | BIT           | NOT NULL                     | bool Aceitunas                   |
+| Tocino                   | BIT           | NOT NULL                     | bool Tocino                      |
+| EsDelivery               | BIT           | NOT NULL                     | bool EsDelivery                  |
+| AplicaConvenioEstudiante | BIT           | NOT NULL                     | bool AplicaConvenioEstudiante    |
+| CostoIngredientes        | INT           | NOT NULL                     | int CostoIngredientes            |
+| SubtotalPizza            | INT           | NOT NULL                     | int SubtotalPizza                |
+| MontoDescuento           | INT           | NOT NULL                     | int MontoDescuento               |
+| CostoDelivery            | INT           | NOT NULL                     | int CostoDelivery                |
+| NetoAfecto               | INT           | NOT NULL                     | int NetoAfecto                   |
+| MontoIva                 | INT           | NOT NULL                     | int MontoIva                     |
+| TotalPagar               | INT           | NOT NULL                     | int TotalPagar                   |
++--------------------------+---------------+------------------------------+----------------------------------+
+
+Construcción de Software (PA26-2026) | IP Virginio Gómez - Sede Concepción   Página 5
+
+6. Mapeo de Formularios WinForms, Controles y Eventos
+Matriz de controles graficos y asignacion de manejadores de eventos en FormPedido.cs y FormClientes.cs:
+FormPedido.cs (formulario principal):
++------------------------+----------------------------------------------------------------------+----------------------+-------------------------------------------------------------------------------+
+| Control GUI            | Nombre (Name)                                                        | Evento Principal     | Accion / Función Ejecutada                                                    |
++------------------------+----------------------------------------------------------------------+----------------------+-------------------------------------------------------------------------------+
+| Formulario Pedido      | FormPedido                                                           | Load                 | Carga combos desde CalculadoraPedido, deshabilita grpResumen y lista pedidos. |
+| Combo Tamaño           | cboTamano                                                            | SelectedIndexChanged | Recalcula montos con las reglas de negocio (Calculo_Changed).                 |
+| Combo Masa             | cboMasa                                                              | SelectedIndexChanged | Recalcula montos con las reglas de negocio (Calculo_Changed).                 |
+| Checkboxes adicionales | chkQuesoExtra, chkPepperoni, chkChampinones, chkAceitunas, chkTocino | CheckedChanged       | Suma $800 por ingrediente y actualiza el detalle.                             |
+| Radio Servicio         | rdbRetiro, rdbDelivery                                               | CheckedChanged       | Aplica o elimina el recargo de delivery de $2.000.                            |
+| Check Convenio         | chkConvenioEstudiante                                                | CheckedChanged       | Aplica 10% de descuento sobre el subtotal.                                    |
+| Boton Calcular/Grabar  | btnCalcular                                                          | Click                | Valida, calcula, muestra el detalle y graba el pedido tras confirmación.      |
+| Boton Nuevo Pedido     | btnLimpiar                                                           | Click                | Restablece todos los controles a su estado inicial.                           |
+| Boton Actualizar       | btnActualizarPedido                                                  | Click                | Actualiza el pedido indicado por ID en una transaccion.                       |
+| Boton Eliminar         | btnEliminarPedido                                                    | Click                | Elimina el pedido por ID previa confirmación.                                 |
+| Boton Buscar x Cliente | btnBuscaPedidosXCliente                                              | Click                | Filtra la grilla con LIKE por nombre de cliente.                              |
+| Boton Buscar x ID      | btnBuscarPedidoPorId                                                 | Click                | Busca por IdPedido y carga el detalle en el formulario.                       |
+| Boton Todos            | btnTodosLosPedidos                                                   | Click                | Recarga el listado completo de pedidos.                                       |
+| Boton Editar Clientes  | btnEditaClientes                                                     | Click                | Abre FormClientes de forma modal (ShowDialog).                                |
+| Boton Probar Conexión  | btnProbarConexion                                                    | Click                | Muestra la cadena y el estado de conexión con LocalDB.                        |
+| Boton Salir            | btnConfirmar                                                         | Click                | Cierra la aplicación previa confirmación.                                     |
+| Grilla Pedidos         | dgvPedidos                                                           | CellClick            | Obtiene IdPedido y muestra el detalle completo (VistaPedido).                 |
+| Etiqueta Estado        | lblAyuda                                                             | MouseEnter botones   | Muestra ayuda contextual ConfigurarAyuda / MostrarEstado.                     |
++------------------------+----------------------------------------------------------------------+----------------------+-------------------------------------------------------------------------------+
+FormClientes.cs (formulario de ABM de clientes):
++---------------------+------------------------+------------------+-------------------------------------------------------------+
+| Control GUI         | Nombre (Name)          | Evento Principal | Accion / Función Ejecutada                                  |
++---------------------+------------------------+------------------+-------------------------------------------------------------+
+| Formulario Clientes | FormClientes           | Load             | Carga el listado de clientes y prepara un registro nuevo.   |
+| Cajas de texto      | txtNombre, txtTelefono | Entrada de datos | Nombre y teléfono usados para grabar, buscar y seleccionar. |
+| Boton Grabar        | btnGrabar              | Click            | Inserta o actualiza cliente con control de duplicados.      |
+| Boton Eliminar      | btnElimina             | Click            | Valida que no tenga pedidos, confirma y elimina.            |
+| Boton Listar        | btnListar              | Click            | Recarga todos los clientes desde ClienteDAO.                |
+| Boton Nuevo         | btnNuevo               | Click            | Limpia los campos y vuelve al modo grabación.               |
+| Boton Buscar        | btnBuscar              | Click            | Filtra por nombre o teléfono con LIKE.                      |
+| Boton Seleccionar   | btnSelecciona          | Click            | Envia nombre y teléfono a FormPedido para el pedido.        |
+| Grilla Clientes     | dgvClientes            | CellDoubleClick  | Carga la fila seleccionada en modo edicion.                 |
++---------------------+------------------------+------------------+-------------------------------------------------------------+
+Reglas de negocio implementadas en CalculadoraPedido.cs:
++--------------------------+--------------------------------------------------------+------------------+
+| Concepto                 | Opcion                                                 | Valor            |
++--------------------------+--------------------------------------------------------+------------------+
+| Tamaño                   | Personal                                               | $5.000           |
+| Tamaño                   | Mediana (por defecto)                                  | $8.500           |
+| Tamaño                   | Familiar                                               | $12.000          |
+| Masa                     | Masa Tradicional (por defecto) / Masa Delgada          | $0               |
+| Masa                     | Borde de Queso                                         | $1.500           |
+| Ingredientes adicionales | Queso Extra, Pepperoni, Champinones, Aceitunas, Tocino | $800 cada uno    |
+| Descuento                | Convenio Estudiante / IPVG                             | 10% del subtotal |
+| Servicio                 | Delivery                                               | $2.000           |
+| Impuesto                 | IVA chileno sobre el neto                              | 19%              |
++--------------------------+--------------------------------------------------------+------------------+
+
+Construcción de Software (PA26-2026) | IP Virginio Gómez - Sede Concepción   Página 6
+
+7. Trazabilidad y Registro Incremental de Versiones (Bitácora Git)
+Bitácora de confirmaciones (commits) que certifican el avance evolutivo del proyecto en Git:
++---------+----------------------+----------------------------------------------------------------------------------+
+| Versión | Hito de Desarrollo   | Mensaje del Commit en Git                                                        |
++---------+----------------------+----------------------------------------------------------------------------------+
+| v1.0    | Prototipo POO        | feat: estructura base de entidades Cliente y PedidoPizza                         |
+| v2.0    | Interfaz WinForms    | feat: maquetacion de FormPedido y FormClientes con data binding                  |
+| v3.0    | Persistencia LocalDB | feat: integración ADO.NET con ConexionBD, ClienteDAO y PedidoDAO                 |
+| v3.1    | Reglas de negocio    | feat: CalculadoraPedido con IVA 19%, descuento 10% y delivery                    |
+| v4.0    | Consolidacion DAO    | feat: transacciones, control de duplicados y trazabilidad del cliente en pedidos |
+| v4.1    | Documentación        | docs: elaboracion del manual técnico de software y diagramas UML                 |
++---------+----------------------+----------------------------------------------------------------------------------+
+La evolucion descrita se corresponde con los artefactos actuales del repositorio: los scripts BDpizzeria/scriptsSql crean PizzeriaDB y cargan datos demo, y el proyecto PizzeriaBellaItalia.csproj compila para net10.0-windows con Microsoft.Data.SqlClient 7.1.2.
+
+Construcción de Software (PA26-2026) | IP Virginio Gómez - Sede Concepción   Página 7

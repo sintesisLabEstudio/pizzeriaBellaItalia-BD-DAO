@@ -1,0 +1,436 @@
+CODIGOS COMPLETOS SQL - PIZZERIA BELLA ITALIA
+Raiz analizada: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql
+Numeracion secuencial 01 a 10 segun el ciclo de vida: crear, adjuntar, cargar demo, diagnosticar, consultar, respaldar, vaciar, desconectar, reconectar y ver copias.
+Convenciones: ARCHIVO, RUTA, DESCRIPCION, CODIGO (literal indentado) y PASO A PASO (explicacion didactica).
+
+GLOSARIO RAPIDO DE T-SQL
+    GO                       separa lotes de instrucciones; no es una instruccion SQL.
+    USE nombre               cambia la base de datos activa.
+    DB_ID / OBJECT_ID        consultan si existen una base o un objeto (tabla).
+    CREATE DATABASE          crea una base de datos; FOR ATTACH la adjunta desde archivos.
+    CREATE TABLE             define una tabla con columnas, tipos y restricciones.
+    IDENTITY(1,1)            genera automaticamente un número correlativo.
+    PRIMARY KEY / FOREIGN KEY claves primaria y foranea (integridad referencial).
+    UNIQUE                   impide valores repetidos en una columna o combinacion.
+    SET IDENTITY_INSERT      permite insertar valores explicitos en una columna IDENTITY.
+    TRUNCATE TABLE           borra todas las filas y reinicia IDENTITY; no permite FK activa.
+    DBCC CHECKIDENT RESEED   reinicia el contador de una columna IDENTITY.
+    BACKUP DATABASE          genera un archivo .bak; WITH INIT lo sobrescribe.
+    sp_detach_db             desadjunta una base conservando .mdf y .ldf (NO los borra).
+    sys.databases            catalogo con estado y modo de acceso de las bases.
+    sys.master_files         catalogo con la ruta fisica de los archivos de las bases.
+    INFORMATION_SCHEMA       catalogo estandar de tablas, columnas y tipos.
+    sp_executesql            ejecuta SQL dinamico y permite parametros OUTPUT.
+    BEGIN TRY / CATCH        captura errores de ejecucion.
+    SET XACT_ABORT ON        revierte toda la transaccion si una instruccion falla.
+
+ARCHIVO: 01_Estructura_PizzeriaDB.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\01_Estructura_PizzeriaDB.sql
+DESCRIPCION: Version original del script de creacion de la base y sus dos tablas, sin control de existencia.
+CODIGO:
+    CREATE DATABASE PizzeriaDB;
+    GO
+    USE PizzeriaDB;
+    GO
+    CREATE TABLE dbo.Clientes (
+        IdCliente INT IDENTITY(1,1) NOT NULL,
+        Cliente NVARCHAR(100) NOT NULL,
+        Telefono NVARCHAR(30) NOT NULL,
+        CONSTRAINT PK_Clientes PRIMARY KEY CLUSTERED (IdCliente ASC),
+        CONSTRAINT UQ_Clientes_Cliente_Telefono UNIQUE NONCLUSTERED (Cliente ASC, Telefono ASC)
+    );
+    GO
+    CREATE TABLE dbo.Pedidos (
+        IdPedido INT IDENTITY(1,1) NOT NULL,
+        IdCliente INT NOT NULL,
+        Cliente NVARCHAR(100) NOT NULL,
+        Telefono NVARCHAR(30) NOT NULL,
+        TamanoNombre NVARCHAR(50) NOT NULL,
+        PrecioBaseTamano INT NOT NULL,
+        MasaNombre NVARCHAR(50) NOT NULL,
+        RecargoMasa INT NOT NULL,
+        QuesoExtra BIT NOT NULL,
+        Pepperoni BIT NOT NULL,
+        Champinones BIT NOT NULL,
+        Aceitunas BIT NOT NULL,
+        Tocino BIT NOT NULL,
+        EsDelivery BIT NOT NULL,
+        AplicaConvenioEstudiante BIT NOT NULL,
+        CostoIngredientes INT NOT NULL,
+        SubtotalPizza INT NOT NULL,
+        MontoDescuento INT NOT NULL,
+        CostoDelivery INT NOT NULL,
+        NetoAfecto INT NOT NULL,
+        MontoIva INT NOT NULL,
+        TotalPagar INT NOT NULL,
+        CONSTRAINT PK_Pedidos PRIMARY KEY CLUSTERED (IdPedido ASC),
+        CONSTRAINT FK_Pedidos_Clientes FOREIGN KEY (IdCliente) REFERENCES dbo.Clientes (IdCliente)
+    );
+    GO
+PASO A PASO:
+    1. CREATE DATABASE PizzeriaDB: crea la base desde cero.
+    2. USE PizzeriaDB: selecciona la base para las siguientes instrucciones.
+    3. CREATE TABLE dbo.Clientes: IdCliente identity, Cliente, Telefono, PK y UNIQUE (Cliente, Telefono).
+    4. CREATE TABLE dbo.Pedidos: 22 columnas con PK identity y FK a Clientes.
+    5. GO separa los lotes: cada bloque se ejecuta como una unidad independiente.
+    6. Nota: esta version falla si la base ya existe; para repetir use la version de comandos\BAT.
+
+ARCHIVO: 02_cargaBaseDatos.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\02_cargaBaseDatos.sql
+DESCRIPCION: Adjunta PizzeriaDB si no esta adjuntada y la deja en MULTI_USER. Lo invoca 02_cargaBaseDatos-02.bat.
+CODIGO:
+    -- Adjunta PizzeriaDB si no esta adjuntada y la deja en MULTI_USER.
+    -- Busca pizzeriaDB.mdf y pizzeriaDB.ldf en la carpeta real del proyecto (v4B).
+    -- Lo ejecuta 02_cargaBaseDatos-02.bat. Si el proyecto se mueve, cambie el valor de @ruta.
+    USE master;
+    GO
+    IF DB_ID(N'PizzeriaDB') IS NULL
+    BEGIN
+        DECLARE @ruta NVARCHAR(260) = N'C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria';
+        IF RIGHT(@ruta, 1) <> N'\' SET @ruta = @ruta + N'\';
+        DECLARE @sql NVARCHAR(MAX) =
+            N'CREATE DATABASE [PizzeriaDB] ON (FILENAME = N''' + @ruta + N'PizzeriaDB.mdf''), '
+          + N'(FILENAME = N''' + @ruta + N'PizzeriaDB_log.ldf'') FOR ATTACH;';
+        EXEC sys.sp_executesql @sql;
+        PRINT 'Base PizzeriaDB adjuntada desde: ' + @ruta;
+    END
+    ELSE
+        PRINT 'La base PizzeriaDB ya estaba adjuntada.';
+    GO
+    ALTER DATABASE [PizzeriaDB] SET MULTI_USER WITH ROLLBACK IMMEDIATE;
+    GO
+PASO A PASO:
+    1. USE master: los comandos de attach se ejecutan desde la base maestra.
+    2. IF DB_ID(...) IS NULL: solo intenta adjuntar si la base no esta registrada en la instancia.
+    3. DECLARE @ruta: apunta a la carpeta real del proyecto (v4B), donde estan los archivos .mdf y .ldf.
+    4. IF RIGHT(@ruta,1) <> ...: asegura que la ruta termine con barra invertida.
+    5. DECLARE @sql = CREATE DATABASE ... FOR ATTACH: arma dinamicamente el attach con los archivos PizzeriaDB.mdf y PizzeriaDB_log.ldf.
+    6. EXEC sp_executesql @sql: ejecuta la sentencia construida y avisa por PRINT.
+    7. ALTER DATABASE ... SET MULTI_USER WITH ROLLBACK IMMEDIATE: habilita el acceso normal y cierra conexiones pendientes.
+
+ARCHIVO: 03_DatosDemo_PizzeriaDB.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\03_DatosDemo_PizzeriaDB.sql
+DESCRIPCION: Carga 3 clientes y 3 pedidos de ejemplo con sus IDs explicitos.
+CODIGO:
+    USE PizzeriaDB;
+    GO
+    SET IDENTITY_INSERT dbo.Clientes ON;
+    INSERT INTO dbo.Clientes (IdCliente, Cliente, Telefono)
+    VALUES
+    (1, 'Carlos Mendoza', '987654321'),
+    (2, 'Ana Gomez', '912345678'),
+    (3, 'Diego Torres', '955551122');
+    SET IDENTITY_INSERT dbo.Clientes OFF;
+    GO
+    SET IDENTITY_INSERT dbo.Pedidos ON;
+    INSERT INTO dbo.Pedidos (
+        IdPedido, IdCliente, Cliente, Telefono, TamanoNombre, PrecioBaseTamano,
+        MasaNombre, RecargoMasa, QuesoExtra, Pepperoni, Champinones, Aceitunas,
+        Tocino, EsDelivery, AplicaConvenioEstudiante, CostoIngredientes,
+        SubtotalPizza, MontoDescuento, CostoDelivery, NetoAfecto, MontoIva, TotalPagar
+    )
+    VALUES
+    (
+        1, 1, 'Carlos Mendoza', '987654321', 'Mediana', 8500,
+        'Borde de Queso', 1500, 1, 1, 0, 0,
+        0, 0, 1, 1600,
+        11600, 1160, 0, 10440, 1983, 12423
+    ),
+    (
+        2, 2, 'Ana Gomez', '912345678', 'Familiar', 12000,
+        'Tradicional', 0, 0, 0, 1, 1,
+        1, 1, 0, 1600,
+        13600, 0, 2000, 15600, 2964, 18564
+    ),
+    (
+        3, 3, 'Diego Torres', '955551122', 'Personal', 5000,
+        'Delgada', 0, 1, 0, 0, 0,
+        0, 0, 0, 800,
+        5800, 0, 0, 5800, 1102, 6902
+    );
+    SET IDENTITY_INSERT dbo.Pedidos OFF;
+    GO
+PASO A PASO:
+    1. USE PizzeriaDB: asegura que los INSERT se hagan en la base correcta.
+    2. SET IDENTITY_INSERT dbo.Clientes ON: permite insertar el valor explicito de IdCliente.
+    3. INSERT INTO dbo.Clientes: carga Carlos Mendoza, Ana Gomez y Diego Torres.
+    4. SET IDENTITY_INSERT dbo.Clientes OFF: restaura el comportamiento normal del identity.
+    5. SET IDENTITY_INSERT dbo.Pedidos ON: lo mismo para el IdPedido.
+    6. INSERT INTO dbo.Pedidos: carga tres pedidos con todos los montos ya calculados (subtotal, descuento, delivery, IVA y total).
+    7. SET IDENTITY_INSERT dbo.Pedidos OFF + GO: cierra la carga y ejecuta el lote.
+
+ARCHIVO: 04_verEstadoConexion.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\04_verEstadoConexion.sql
+DESCRIPCION: Diagnostico de PizzeriaDB (mismo contenido que la version de comandos\BAT) disponible tambien en scriptsSql.
+CODIGO:
+    -- Diagnostico de PizzeriaDB: instancia, estado, modo de acceso, archivos y filas por tabla.
+    -- Equivale a 03_verEstadoConexion-03.bat y a comandos\BAT\03_verEstadoConexion.sql.
+    SET NOCOUNT ON;
+    SELECT @@SERVERNAME AS Instancia, SERVERPROPERTY('ProductVersion') AS Version;
+    DECLARE @estado NVARCHAR(60), @acceso NVARCHAR(60);
+    SELECT @estado = state_desc, @acceso = user_access_desc
+    FROM sys.databases
+    WHERE name = N'PizzeriaDB';
+    IF @estado IS NULL
+    BEGIN
+        PRINT 'RESULTADO: ERROR, la base PizzeriaDB no existe o esta desadjuntada. Ejecute 01 o 02.';
+        RETURN;
+    END
+    SELECT name AS Base, state_desc AS Estado, user_access_desc AS Modo
+    FROM sys.databases
+    WHERE name = N'PizzeriaDB';
+    SELECT name AS Archivo, type_desc AS Tipo, physical_name AS Ruta
+    FROM sys.master_files
+    WHERE database_id = DB_ID(N'PizzeriaDB');
+    DECLARE @clientes INT, @pedidos INT;
+    BEGIN TRY
+        EXEC sys.sp_executesql
+            N'SELECT @c = COUNT(*) FROM PizzeriaDB.dbo.Clientes; SELECT @p = COUNT(*) FROM PizzeriaDB.dbo.Pedidos;',
+            N'@c INT OUTPUT, @p INT OUTPUT',
+            @c = @clientes OUTPUT, @p = @pedidos OUTPUT;
+        SELECT 'Clientes' AS Tabla, @clientes AS Filas
+        UNION ALL
+        SELECT 'Pedidos', @pedidos;
+    END TRY
+    BEGIN CATCH
+        PRINT 'RESULTADO: ERROR, no se pudieron leer las tablas Clientes y Pedidos. Ejecute 01.';
+        RETURN;
+    END CATCH
+    IF @estado = N'ONLINE' AND @acceso = N'MULTI_USER'
+        PRINT 'RESULTADO: TODO OK, base ONLINE y MULTI_USER';
+    ELSE
+        PRINT 'RESULTADO: REVISAR, estado ' + @estado + ' y modo ' + @acceso;
+    GO
+PASO A PASO:
+    1. SET NOCOUNT ON: salida limpia, sin contadores de filas.
+    2. SELECT @@SERVERNAME y SERVERPROPERTY: identifica instancia y version.
+    3. SELECT desde sys.databases: lee estado y modo de acceso de PizzeriaDB.
+    4. IF @estado IS NULL: si no existe, imprime un error y sale.
+    5. SELECT desde sys.master_files: muestra las rutas de los archivos fisicos.
+    6. sp_executesql con OUTPUT y UNION ALL: cuenta filas de Clientes y Pedidos.
+    7. BEGIN TRY / CATCH: controla errores de lectura de tablas.
+    8. PRINT final con el resultado TODO OK o REVISAR.
+
+ARCHIVO: 05_verTablas.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\05_verTablas.sql
+DESCRIPCION: Lista la estructura de las tablas dbo y todo su contenido. Equivale a 04_verTablas-04.bat.
+CODIGO:
+    -- Muestra la estructura de las tablas dbo y su contenido.
+    -- Equivale a 04_verTablas-04.bat.
+    USE PizzeriaDB;
+    GO
+    SET NOCOUNT ON;
+    PRINT '=== ESTRUCTURA DE LAS TABLAS dbo ===';
+    SELECT TABLE_NAME AS Tabla, COLUMN_NAME AS Columna, DATA_TYPE AS Tipo,
+           ORDINAL_POSITION AS Orden, IS_NULLABLE AS AdmiteNull
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = 'dbo'
+    ORDER BY TABLE_NAME, ORDINAL_POSITION;
+    PRINT '=== CLIENTES ===';
+    SELECT IdCliente, Cliente, Telefono
+    FROM dbo.Clientes
+    ORDER BY IdCliente DESC;
+    PRINT '=== PEDIDOS ===';
+    SELECT IdPedido, IdCliente, Cliente, Telefono, TamanoNombre,
+           MasaNombre, EsDelivery, AplicaConvenioEstudiante, SubtotalPizza,
+           MontoDescuento, CostoDelivery, MontoIva, TotalPagar
+    FROM dbo.Pedidos
+    ORDER BY IdPedido DESC;
+    GO
+PASO A PASO:
+    1. USE PizzeriaDB + GO: fija el contexto de la base.
+    2. SET NOCOUNT ON: evita mensajes de filas afectadas.
+    3. SELECT desde INFORMATION_SCHEMA.COLUMNS: devuelve tabla, columna, tipo, orden y si admite NULL.
+    4. SELECT * de dbo.Clientes ordenado por IdCliente DESC: muestra los clientes mas recientes primero.
+    5. SELECT de dbo.Pedidos: muestra los pedidos con sus columnas principales y montos, ordenados por IdPedido DESC.
+
+ARCHIVO: 06_respaldarBaseDatos.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\06_respaldarBaseDatos.sql
+DESCRIPCION: Crea un respaldo .bak de PizzeriaDB. Equivale a 05_respaldarBaseDatos-05.bat.
+CODIGO:
+    -- Genera un respaldo .bak de PizzeriaDB.
+    -- Equivale a 05_respaldarBaseDatos-05.bat.
+    -- Si la ruta no existe, crear antes la carpeta (el .bat lo hace con mkdir).
+    DECLARE @BackupFile NVARCHAR(260) =
+        N'C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\respaldo\PizzeriaDB_Backup.bak';
+    BACKUP DATABASE [PizzeriaDB] TO DISK = @BackupFile WITH INIT;
+    GO
+PASO A PASO:
+    1. DECLARE @BackupFile: define la ruta del archivo .bak dentro de la carpeta respaldo (editarla si el proyecto esta en otra ruta).
+    2. BACKUP DATABASE ... TO DISK = @BackupFile: escribe el respaldo completo.
+    3. WITH INIT: sobrescribe el contenido anterior del archivo en lugar de agregarlo.
+    4. Requisito: la carpeta destino debe existir; el .bat la crea con mkdir si hace falta.
+
+ARCHIVO: 07_vaciaBaseDatos.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\07_vaciaBaseDatos.sql
+DESCRIPCION: Vacia las dos tablas y reinicia los IDENTITY dentro de una transaccion. Equivale a 06_vaciaBaseDatos-06.bat.
+CODIGO:
+    -- Vacia Clientes y Pedidos y reinicia los contadores IDENTITY.
+    -- Equivale a 06_vaciaBaseDatos-06.bat (que ademas pide confirmacion con choice).
+    -- Se elimina y se vuelve a crear la llave foranea porque TRUNCATE no puede
+    -- ejecutarse mientras exista una FK que referencie la tabla.
+    SET XACT_ABORT ON;
+    BEGIN TRANSACTION;
+    ALTER TABLE dbo.Pedidos DROP CONSTRAINT FK_Pedidos_Clientes;
+    TRUNCATE TABLE dbo.Pedidos;
+    TRUNCATE TABLE dbo.Clientes;
+    DBCC CHECKIDENT ('dbo.Pedidos', RESEED, 0);
+    DBCC CHECKIDENT ('dbo.Clientes', RESEED, 0);
+    ALTER TABLE dbo.Pedidos ADD CONSTRAINT FK_Pedidos_Clientes
+        FOREIGN KEY (IdCliente) REFERENCES dbo.Clientes (IdCliente);
+    COMMIT TRANSACTION;
+    GO
+PASO A PASO:
+    1. SET XACT_ABORT ON + BEGIN TRANSACTION: si cualquier instruccion falla, se revierte todo.
+    2. ALTER TABLE ... DROP CONSTRAINT FK_Pedidos_Clientes: quita la FK porque TRUNCATE no puede ejecutarse con una referencia activa.
+    3. TRUNCATE TABLE dbo.Pedidos y dbo.Clientes: elimina todas las filas (y es mas rapido que DELETE).
+    4. DBCC CHECKIDENT (..., RESEED, 0): reinicia los contadores para que el proximo registro sea el número 1.
+    5. ALTER TABLE ... ADD CONSTRAINT: restaura la llave foranea y la integridad referencial.
+    6. COMMIT TRANSACTION: confirma el conjunto completo de cambios.
+
+ARCHIVO: 08_desconectaBase.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\08_desconectaBase.sql
+DESCRIPCION: Desadjunta PizzeriaDB conservando los archivos .mdf y .ldf. Equivale a 07_desconectaBase-07.bat.
+CODIGO:
+    -- Desadjunta PizzeriaDB de LocalDB conservando los archivos .mdf y .ldf.
+    -- Equivale a 07_desconectaBase-07.bat.
+    -- SINGLE_USER WITH ROLLBACK IMMEDIATE cierra las conexiones activas.
+    USE master;
+    GO
+    ALTER DATABASE [PizzeriaDB] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    EXEC sp_detach_db 'PizzeriaDB';
+    GO
+PASO A PASO:
+    1. USE master: el comando de desadjuntar se ejecuta desde la base maestra.
+    2. ALTER DATABASE ... SET SINGLE_USER WITH ROLLBACK IMMEDIATE: cierra conexiones activas y bloquea nuevas.
+    3. EXEC sp_detach_db PizzeriaDB: desadjunta la base; los archivos fisicos permanecen en disco.
+    4. Para volver a usarla, ejecutar 08_reconectaBD.sql.
+
+ARCHIVO: 09_reconectaBD.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\09_reconectaBD.sql
+DESCRIPCION: Vuelve a adjuntar PizzeriaDB desde sus archivos y la deja en MULTI_USER. Equivale a reconectaBD.bat.
+CODIGO:
+    -- Vuelve a adjuntar PizzeriaDB desde los archivos .mdf y .ldf y la deja en MULTI_USER.
+    -- Equivale a reconectaBD.bat.
+    -- Por defecto busca los archivos en la carpeta real del proyecto (v4B).
+    -- Si el proyecto se mueve, cambiar el valor de @ruta.
+    USE master;
+    GO
+    IF DB_ID(N'PizzeriaDB') IS NULL
+    BEGIN
+        DECLARE @ruta NVARCHAR(260) = N'C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria';
+        IF RIGHT(@ruta, 1) <> N'\' SET @ruta = @ruta + N'\';
+        DECLARE @sql NVARCHAR(MAX) =
+            N'CREATE DATABASE [PizzeriaDB] ON (FILENAME = N''' + @ruta + N'pizzeriaDB.mdf''), '
+          + N'(FILENAME = N''' + @ruta + N'pizzeriaDB.ldf'') FOR ATTACH;';
+        EXEC sys.sp_executesql @sql;
+        PRINT 'Base PizzeriaDB adjuntada desde: ' + @ruta;
+    END
+    ELSE
+        PRINT 'La base PizzeriaDB ya estaba adjuntada.';
+    GO
+    ALTER DATABASE [PizzeriaDB] SET MULTI_USER WITH ROLLBACK IMMEDIATE;
+    GO
+PASO A PASO:
+    1. USE master: los comandos de attach se ejecutan desde la base maestra.
+    2. IF DB_ID(...) IS NULL: solo adjunta si la base no esta registrada.
+    3. DECLARE @ruta: apunta a la carpeta real del proyecto (v4B), donde estan los archivos .mdf y .ldf.
+    4. IF RIGHT(@ruta,1) <> ...: asegura barra final en la ruta.
+    5. DECLARE @sql = CREATE DATABASE ... FOR ATTACH con pizzeriaDB.mdf y pizzeriaDB.ldf: arma el comando dinamico.
+    6. EXEC sp_executesql @sql: lo ejecuta e informa por PRINT.
+    7. ALTER DATABASE ... SET MULTI_USER WITH ROLLBACK IMMEDIATE: restaura el acceso normal.
+
+ARCHIVO: 10_verRegistrosTablas.sql
+RUTA: C:\desarrollo\Csoft\pizzeriaBellaItalia-BD-DAO-v4B\Codigo_Funcional\BDpizzeria\scriptsSql\10_verRegistrosTablas.sql
+DESCRIPCION: Visor de las copias de seguridad: adjunta temporalmente una copia de .mdf/.ldf, muestra tablas y registros, y la desadjunta. Lo invoca verRegistrosTablas.bat con -v VisorDir y ConLog.
+CODIGO:
+    -- ============================================================================
+    -- VISOR DE LAS COPIAS DE PIZZERIADB - PIZZERIA BELLA ITALIA
+    -- ----------------------------------------------------------------------------
+    -- Adjunta como BD TEMPORARIA (PizzeriaDB_Visor) una copia de los archivos
+    -- pizzeriaDB.mdf/.ldf que estan en esta carpeta respaldo, muestra tablas,
+    -- estructura y registros, y al final DESADJUNTA esa BD temporal.
+    --
+    -- IMPORTANTE: se usa sp_detach_db y NO DROP DATABASE, porque DROP borraria
+    -- los archivos .mdf/.ldf de la carpeta respaldo (que son el respaldo).
+    --
+    -- Lo invoca verRegistrosTablas.bat con:
+    --   -v VisorDir="ruta\a\_visor" ConLog=1|0
+    -- ============================================================================
+    SET NOCOUNT ON;
+    DECLARE @VisorDir NVARCHAR(500) = N'$(VisorDir)';
+    DECLARE @ConLog   NVARCHAR(5)   = N'$(ConLog)';
+    DECLARE @Mdf      NVARCHAR(500) = @VisorDir + N'\visor.mdf';
+    DECLARE @Ldf      NVARCHAR(500) = @VisorDir + N'\visor.ldf';
+    DECLARE @Sql      NVARCHAR(MAX);
+    IF DB_ID(N'PizzeriaDB_Visor') IS NOT NULL
+    BEGIN
+        ALTER DATABASE [PizzeriaDB_Visor] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+        EXEC master.dbo.sp_detach_db @dbname = N'PizzeriaDB_Visor';
+    END
+    IF @ConLog = N'1'
+        SET @Sql = N'CREATE DATABASE [PizzeriaDB_Visor] ON (FILENAME = N''' + @Mdf + N'''), (FILENAME = N''' + @Ldf + N''') FOR ATTACH;'
+    ELSE
+        SET @Sql = N'CREATE DATABASE [PizzeriaDB_Visor] ON (FILENAME = N''' + @Mdf + N''') FOR ATTACH_REBUILD_LOG;';
+    BEGIN TRY
+        EXEC sp_executesql @Sql;
+    END TRY
+    BEGIN CATCH
+        RAISERROR('No se pudieron adjuntar las copias .mdf/.ldf de la carpeta respaldo.', 16, 1);
+    END CATCH
+    PRINT '';
+    PRINT '=== 1) TABLAS Y CANTIDAD DE FILAS (DE LAS COPIAS EN BD) ===';
+    SELECT t.name AS Tabla, SUM(p.rows) AS Filas
+    FROM PizzeriaDB_Visor.sys.tables t
+    LEFT JOIN PizzeriaDB_Visor.sys.partitions p
+           ON p.object_id = t.object_id AND p.index_id IN (0,1)
+    WHERE t.is_ms_shipped = 0
+    GROUP BY t.name
+    ORDER BY t.name;
+    IF OBJECT_ID(N'PizzeriaDB_Visor.dbo.Clientes', N'U') IS NOT NULL
+    BEGIN
+        PRINT '';
+        PRINT '=== 2) ESTRUCTURA DE Clientes ===';
+        SELECT c.column_id AS Orden, c.name AS Columna, ty.name AS Tipo,
+               c.max_length AS Largo, c.is_nullable AS AdmiteNull
+        FROM PizzeriaDB_Visor.sys.columns c
+        JOIN PizzeriaDB_Visor.sys.types ty ON ty.user_type_id = c.user_type_id
+        WHERE c.object_id = OBJECT_ID(N'PizzeriaDB_Visor.dbo.Clientes')
+        ORDER BY c.column_id;
+        PRINT '';
+        PRINT '=== 3) REGISTROS DE Clientes ===';
+        SELECT * FROM [PizzeriaDB_Visor].dbo.Clientes;
+    END
+    IF OBJECT_ID(N'PizzeriaDB_Visor.dbo.Pedidos', N'U') IS NOT NULL
+    BEGIN
+        PRINT '';
+        PRINT '=== 4) ESTRUCTURA DE Pedidos ===';
+        SELECT c.column_id AS Orden, c.name AS Columna, ty.name AS Tipo,
+               c.max_length AS Largo, c.is_nullable AS AdmiteNull
+        FROM PizzeriaDB_Visor.sys.columns c
+        JOIN PizzeriaDB_Visor.sys.types ty ON ty.user_type_id = c.user_type_id
+        WHERE c.object_id = OBJECT_ID(N'PizzeriaDB_Visor.dbo.Pedidos')
+        ORDER BY c.column_id;
+        PRINT '';
+        PRINT '=== 5) REGISTROS DE Pedidos ===';
+        SELECT * FROM [PizzeriaDB_Visor].dbo.Pedidos;
+    END
+    GO
+    -- Limpieza: desadjuntar para no borrar los archivos de la carpeta respaldo.
+    IF DB_ID(N'PizzeriaDB_Visor') IS NOT NULL
+    BEGIN
+        ALTER DATABASE [PizzeriaDB_Visor] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+        EXEC master.dbo.sp_detach_db @dbname = N'PizzeriaDB_Visor';
+        PRINT '';
+        PRINT 'BD temporal desadjuntada. Las copias en respaldo siguen intactas.';
+    END
+    GO
+PASO A PASO:
+    1. DECLARE @VisorDir, @ConLog, @Mdf, @Ldf: reciben los parametros que pasa el .bat y arman las rutas de los archivos temporales.
+    2. IF DB_ID(PizzeriaDB_Visor) IS NOT NULL ...: si quedo una sesion anterior, la cierra y desadjunta antes de empezar.
+    3. IF @ConLog = 1 ... ELSE: decide entre FOR ATTACH (con .ldf) y ATTACH_REBUILD_LOG (sin .ldf).
+    4. BEGIN TRY / EXEC sp_executesql / RAISERROR: adjunta la copia como base temporal y avisa si falla.
+    5. SELECT sobre sys.tables y sys.partitions: lista las tablas y su cantidad de filas.
+    6. SELECT desde sys.columns y sys.types: muestra la estructura de Clientes y de Pedidos.
+    7. SELECT * de ambas tablas: muestra los registros de las copias.
+    8. GO y bloque final: desadjunta la BD temporal con sp_detach_db (NO DROP) para no borrar los archivos del respaldo.
